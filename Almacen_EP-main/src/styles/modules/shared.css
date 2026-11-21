@@ -1,0 +1,276 @@
+
+/* =========================================
+   COMPONENTES GENERALES
+========================================= */
+
+.page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 26px;
+}
+
+.page-heading h1 {
+  margin: 4px 0 7px;
+}
+
+.page-heading p {
+  max-width: 700px;
+  margin-bottom: 0;
+}
+
+.page-eyebrow {
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+/* BOTONES */
+
+.button {
+  min-height: 42px;
+  padding: 0 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 650;
+}
+
+.button-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.button-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+.button-secondary {
+  border: 1px solid var(--color-border);
+  background: white;
+  color: var(--color-text);
+}
+
+/* TARJETAS Y RESÚMENES */
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.summary-card,
+.content-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.summary-card {
+  padding: 20px;
+}
+
+.summary-card span,
+.summary-card small {
+  display: block;
+}
+
+.summary-card span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.summary-card strong {
+  display: block;
+  margin: 7px 0 4px;
+  font-size: 28px;
+}
+
+.summary-card small {
+  color: var(--color-text-secondary);
+}
+
+.content-card {
+  overflow: hidden;
+}
+
+/* BARRA DE TABLAS */
+
+.table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 21px 22px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table-toolbar h2 {
+  margin-bottom: 4px;
+  font-size: 17px;
+}
+
+.table-toolbar p {
+  margin-bottom: 0;
+  font-size: 12px;
+}
+
+/* BUSCADOR */
+
+.search-box {
+  width: min(100%, 330px);
+  height: 42px;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: white;
+  color: var(--color-text-secondary);
+}
+
+.search-box:focus-within {
+  border-color: var(--color-primary);
+}
+
+.search-box input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+}
+
+/* TABLAS */
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table th {
+  background: #f8fafc;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.data-table td {
+  font-size: 13px;
+}
+
+.data-table tbody tr:hover {
+  background: #fafcff;
+}
+
+/* CÓDIGOS Y ESTADOS */
+
+.sku-code {
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 750;
+}
+
+.status-badge {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.status-active {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.status-inactive {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* ACCIONES */
+
+.table-actions-title {
+  text-align: center;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-close,
+.icon-action {
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.modal-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: #f1f3f5;
+  color: #64748b;
+}
+
+.icon-action {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: white;
+  color: var(--color-text-secondary);
+}
+
+.icon-action:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* TABLAS VACÍAS */
+
+.empty-table {
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.empty-table strong {
+  color: var(--color-text);
+}
+
+.empty-table span {
+  font-size: 12px;
+}

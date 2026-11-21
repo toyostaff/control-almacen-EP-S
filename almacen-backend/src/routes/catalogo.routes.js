@@ -1,0 +1,18 @@
+import { Router } from 'express';
+import { pool } from '../config/db.js';
+import { autenticar, exigirAdmin } from '../middleware/auth.js';
+import { registrarEvento } from '../services/auditoria.js';
+import { HttpError } from '../utils/httpError.js';
+const router = Router();
+router.use(autenticar);
+router.get('/', async (req,res,next) => { try { const [rows]=await pool.query('SELECT id,sku,descripcion,DATE_FORMAT(fecha_creacion, "%Y-%m-%d") fechaCreacion,estado FROM catalogo ORDER BY id'); res.json({ok:true,data:rows}); } catch(e){next(e);} });
+router.post('/', exigirAdmin, async (req,res,next) => {
+ const conn=await pool.getConnection(); try { const descripcion=String(req.body.descripcion||'').trim(); if(!descripcion) throw new HttpError(400,'La descripción es obligatoria.'); await conn.beginTransaction();
+ const [dup]=await conn.execute('SELECT id FROM catalogo WHERE LOWER(descripcion)=LOWER(?) LIMIT 1',[descripcion]); if(dup.length) throw new HttpError(409,'Ya existe un material con esta descripción.');
+ const [max]=await conn.query("SELECT COALESCE(MAX(CAST(SUBSTRING(sku,5) AS UNSIGNED)),0)+1 siguiente FROM catalogo"); const sku=`SKU-${String(max[0].siguiente).padStart(4,'0')}`;
+ const [r]=await conn.execute('INSERT INTO catalogo(sku,descripcion) VALUES(?,?)',[sku,descripcion]); await registrarEvento(conn,{modulo:'Catálogo Maestro',accion:'Creación',descripcion:`Se creó el material ${descripcion}.`,referencia:sku,usuarioId:req.usuario.sub,usuario:req.usuario.nombre}); await conn.commit(); res.status(201).json({ok:true,data:{id:r.insertId,sku,descripcion,estado:'Activo',fechaCreacion:new Date().toISOString().slice(0,10)}});
+ }catch(e){await conn.rollback();next(e);}finally{conn.release();}
+});
+router.put('/:id', exigirAdmin, async(req,res,next)=>{const conn=await pool.getConnection();try{const descripcion=String(req.body.descripcion||'').trim();if(!descripcion)throw new HttpError(400,'La descripción es obligatoria.');await conn.beginTransaction();const [old]=await conn.execute('SELECT * FROM catalogo WHERE id=? FOR UPDATE',[req.params.id]);if(!old.length)throw new HttpError(404,'No se encontró el material.');const [dup]=await conn.execute('SELECT id FROM catalogo WHERE LOWER(descripcion)=LOWER(?) AND id<>?',[descripcion,req.params.id]);if(dup.length)throw new HttpError(409,'Ya existe otro material con esta descripción.');await conn.execute('UPDATE catalogo SET descripcion=? WHERE id=?',[descripcion,req.params.id]);await registrarEvento(conn,{modulo:'Catálogo Maestro',accion:'Edición',descripcion:`Se modificó el material ${old[0].descripcion} por ${descripcion}.`,referencia:old[0].sku,usuarioId:req.usuario.sub,usuario:req.usuario.nombre});await conn.commit();res.json({ok:true,data:{...old[0],descripcion}});}catch(e){await conn.rollback();next(e);}finally{conn.release();}});
+router.patch('/:id/estado', exigirAdmin, async(req,res,next)=>{const conn=await pool.getConnection();try{await conn.beginTransaction();const [r]=await conn.execute('SELECT * FROM catalogo WHERE id=? FOR UPDATE',[req.params.id]);if(!r.length)throw new HttpError(404,'No se encontró el material.');const estado=r[0].estado==='Activo'?'Inactivo':'Activo';await conn.execute('UPDATE catalogo SET estado=? WHERE id=?',[estado,req.params.id]);await registrarEvento(conn,{modulo:'Catálogo Maestro',accion:estado==='Activo'?'Activación':'Desactivación',descripcion:`Se ${estado==='Activo'?'activó':'desactivó'} el material ${r[0].descripcion}.`,referencia:r[0].sku,usuarioId:req.usuario.sub,usuario:req.usuario.nombre});await conn.commit();res.json({ok:true,data:{...r[0],estado}});}catch(e){await conn.rollback();next(e);}finally{conn.release();}});
+export default router;

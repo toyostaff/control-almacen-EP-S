@@ -1,0 +1,283 @@
+
+import { useEffect, useRef, useState } from "react";
+import { buscarRepuestoPorVoz } from "../../services/vozService";
+
+function VoiceAssistant({ onResultado }) {
+  const [escuchando, setEscuchando] = useState(false);
+  const [procesando, setProcesando] = useState(false);
+  const [soporteVoz, setSoporteVoz] = useState(false);
+  const [mensaje, setMensaje] = useState("");
+  const [tipoMensaje, setTipoMensaje] = useState("");
+
+  const reconocimientoRef = useRef(null);
+  const activoRef = useRef(false);
+  const procesandoRef = useRef(false);
+  const onResultadoRef = useRef(onResultado);
+
+  useEffect(() => {
+    onResultadoRef.current = onResultado;
+  }, [onResultado]);
+
+  /* =====================================
+     RESPUESTA HABLADA
+  ===================================== */
+
+  const hablar = (texto) => {
+    if (!("speechSynthesis" in window)) return;
+
+    window.speechSynthesis.cancel();
+
+    const respuesta = new SpeechSynthesisUtterance(texto);
+
+    respuesta.lang = "es-PE";
+    respuesta.rate = 0.95;
+    respuesta.pitch = 1;
+
+    window.speechSynthesis.speak(respuesta);
+  };
+
+  /* =====================================
+     PROCESAR CONSULTA
+  ===================================== */
+
+  const procesarConsulta = (texto) => {
+    setProcesando(true);
+    procesandoRef.current = true;
+
+    setMensaje("Buscando...");
+    setTipoMensaje("processing");
+
+    try {
+      const datos = buscarRepuestoPorVoz(texto);
+
+      if (onResultadoRef.current) {
+        onResultadoRef.current(datos);
+      }
+
+      setMensaje(datos.respuesta);
+
+      setTipoMensaje(
+        datos.encontrado ? "success" : "error"
+      );
+
+      hablar(datos.respuesta);
+
+    } catch (error) {
+      console.error("Error en búsqueda por voz:", error);
+
+      const respuesta =
+        "Ocurrió un problema al consultar el inventario.";
+
+      setMensaje(respuesta);
+      setTipoMensaje("error");
+
+      if (onResultadoRef.current) {
+        onResultadoRef.current(null);
+      }
+
+      hablar(respuesta);
+
+    } finally {
+      setProcesando(false);
+      procesandoRef.current = false;
+    }
+  };
+
+  /* =====================================
+     INICIALIZAR MICRÓFONO
+  ===================================== */
+
+  useEffect(() => {
+    const SpeechRecognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setSoporteVoz(false);
+      return;
+    }
+
+    setSoporteVoz(true);
+
+    const reconocimiento = new SpeechRecognition();
+
+    reconocimiento.lang = "es-PE";
+    reconocimiento.continuous = false;
+    reconocimiento.interimResults = false;
+    reconocimiento.maxAlternatives = 1;
+
+    reconocimiento.onstart = () => {
+      setEscuchando(true);
+      setMensaje("Te escucho...");
+      setTipoMensaje("listening");
+    };
+
+    reconocimiento.onresult = (event) => {
+      const texto =
+        event.results[0][0].transcript.trim();
+
+      if (texto) {
+        procesarConsulta(texto);
+      }
+    };
+
+    reconocimiento.onerror = (event) => {
+      activoRef.current = false;
+      setEscuchando(false);
+
+      let respuesta = "No pude reconocer tu consulta.";
+
+      if (
+        event.error === "not-allowed" ||
+        event.error === "service-not-allowed"
+      ) {
+        respuesta = "Permite el acceso al micrófono.";
+      } else if (event.error === "no-speech") {
+        respuesta = "No detecté ninguna voz. Inténtalo nuevamente.";
+      } else if (event.error === "network") {
+        respuesta = "Error de conexión al reconocer la voz.";
+      } else if (event.error === "audio-capture") {
+        respuesta = "No se encontró un micrófono disponible.";
+      }
+
+      setMensaje(respuesta);
+      setTipoMensaje("error");
+    };
+
+    reconocimiento.onend = () => {
+      activoRef.current = false;
+      setEscuchando(false);
+    };
+
+    reconocimientoRef.current = reconocimiento;
+
+    return () => {
+      activoRef.current = false;
+
+      reconocimiento.onresult = null;
+      reconocimiento.onerror = null;
+      reconocimiento.onstart = null;
+      reconocimiento.onend = null;
+
+      reconocimiento.abort();
+      reconocimientoRef.current = null;
+
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  /* =====================================
+     ACTIVAR MICRÓFONO
+  ===================================== */
+
+  const iniciarEscucha = () => {
+    if (!soporteVoz || !reconocimientoRef.current) {
+      setMensaje("Reconocimiento de voz no disponible.");
+      setTipoMensaje("error");
+      return;
+    }
+
+    if (activoRef.current || procesandoRef.current) {
+      return;
+    }
+
+    window.speechSynthesis?.cancel();
+
+    activoRef.current = true;
+
+    setMensaje("Preparando micrófono...");
+    setTipoMensaje("listening");
+
+    try {
+      reconocimientoRef.current.start();
+    } catch (error) {
+      activoRef.current = false;
+      setEscuchando(false);
+      setMensaje("No se pudo activar el micrófono.");
+      setTipoMensaje("error");
+
+      console.error(error);
+    }
+  };
+
+  /* =====================================
+     CANCELAR ESCUCHA
+  ===================================== */
+
+  const cancelarEscucha = () => {
+    activoRef.current = false;
+
+    reconocimientoRef.current?.abort();
+
+    setEscuchando(false);
+    setMensaje("Consulta cancelada.");
+    setTipoMensaje("error");
+  };
+
+  /* =====================================
+     INTERFAZ COMPACTA
+  ===================================== */
+
+  return (
+    <div className="voice-control">
+
+      <button
+        type="button"
+        className={`voice-control-button ${
+          escuchando ? "is-listening" : ""
+        }`}
+        onClick={
+          escuchando
+            ? cancelarEscucha
+            : iniciarEscucha
+        }
+        disabled={procesando || !soporteVoz}
+        title={
+          escuchando
+            ? "Cancelar consulta"
+            : "Buscar repuesto mediante voz"
+        }
+        aria-label="Buscar repuesto mediante voz"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="21"
+          height="21"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <path d="M5 10a7 7 0 0 0 14 0" />
+          <path d="M12 17v5" />
+          <path d="M8 22h8" />
+        </svg>
+      </button>
+
+      {mensaje && (
+        <div
+          className={`voice-inline-message ${tipoMensaje}`}
+          role="status"
+          aria-live="polite"
+        >
+          {escuchando && (
+            <span className="voice-inline-indicator" />
+          )}
+
+          {procesando && (
+            <span className="voice-inline-spinner" />
+          )}
+
+          <span>{mensaje}</span>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+export default VoiceAssistant;

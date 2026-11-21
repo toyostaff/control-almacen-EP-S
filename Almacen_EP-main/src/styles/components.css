@@ -1,0 +1,11 @@
+
+/* COMPONENTES COMPARTIDOS */
+@import "./modules/shared.css";
+
+/* MÓDULOS DEL SISTEMA */
+@import "./modules/dashboard.css";
+@import "./modules/catalogo.css";
+@import "./modules/inventario.css";
+@import "./modules/ubicaciones.css";
+@import "./modules/historial.css";
+@import "./modules/voz.css";

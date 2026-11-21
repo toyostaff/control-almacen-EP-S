@@ -1,0 +1,144 @@
+/* MODULO DE UBICACIONES */
+@import "./ubicaciones-base.css";
+@import "./ubicaciones-selectores.css";
+@import "./ubicaciones-detalle.css";
+
+
+
+/* =====================================
+   FOTOGRAFÍAS EN COMPONENTES ALMACENADOS
+===================================== */
+
+.location-material-photo {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: zoom-in;
+}
+
+.location-material-photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.location-material-photo > span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.location-material-photo:hover > span {
+  opacity: 1;
+}
+
+/* =====================================
+   VISUALIZADOR DE FOTOGRAFÍAS
+===================================== */
+
+.location-photo-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.location-photo-modal {
+  width: min(100%, 650px);
+  max-height: 90vh;
+  overflow: hidden;
+  border-radius: 15px;
+  background: white;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.location-photo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.location-photo-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.location-photo-header strong {
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.location-photo-header small {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.location-photo-header button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: #f1f3f5;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.location-photo-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+  max-height: calc(90vh - 75px);
+  background: #f5f5f5;
+}
+
+.location-photo-view img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(90vh - 110px);
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 480px) {
+  .location-material-photo {
+    width: 54px;
+    height: 54px;
+    min-width: 54px;
+  }
+
+  .location-photo-backdrop {
+    padding: 12px;
+  }
+
+  .location-photo-modal {
+    width: 100%;
+  }
+}
+
+
