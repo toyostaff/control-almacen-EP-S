@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -9,7 +8,6 @@ import {
   CalendarDays,
   UserRound,
   ClipboardList,
-  Package,
   Pencil,
   Power,
   PlusCircle,
@@ -28,7 +26,9 @@ import {
 import { useUser } from "../../context/UserContext";
 
 // =====================================================
+
 // FORMATEAR FECHA
+
 // =====================================================
 
 function formatearFecha(fecha) {
@@ -42,28 +42,40 @@ function formatearFecha(fecha) {
 
   return fechaObjeto.toLocaleString("es-PE", {
     day: "2-digit",
+
     month: "2-digit",
+
     year: "numeric",
+
     hour: "2-digit",
+
     minute: "2-digit",
+
     hour12: true,
   });
 }
 
 // =====================================================
+
 // NORMALIZAR TEXTO
+
 // =====================================================
 
 function normalizar(texto) {
   return String(texto || "")
     .normalize("NFD")
+
     .replace(/[\u0300-\u036f]/g, "")
+
     .toLowerCase()
+
     .trim();
 }
 
 // =====================================================
+
 // ICONO SEGÚN ACCIÓN
+
 // =====================================================
 
 function obtenerIcono(accion) {
@@ -88,7 +100,9 @@ function obtenerIcono(accion) {
 }
 
 // =====================================================
+
 // COLOR SEGÚN ACCIÓN
+
 // =====================================================
 
 function obtenerClaseAccion(accion) {
@@ -114,7 +128,9 @@ function obtenerClaseAccion(accion) {
 }
 
 // =====================================================
+
 // COMPONENTE PRINCIPAL
+
 // =====================================================
 
 function HistorialPage() {
@@ -139,7 +155,9 @@ function HistorialPage() {
   const [limpiando, setLimpiando] = useState(false);
 
   // ===================================================
+
   // CARGAR HISTORIAL DESDE RAILWAY
+
   // ===================================================
 
   const cargarHistorial = useCallback(async (manual = false) => {
@@ -156,24 +174,24 @@ function HistorialPage() {
 
       if (!Array.isArray(resultado)) {
         throw new Error(
-          "El servidor devolvió un formato de historial inválido."
+          "El servidor devolvió un formato de historial inválido.",
         );
       }
 
       setHistorial(resultado);
-
     } catch (err) {
-      setError(
-        err.message || "No se pudo consultar el historial."
-      );
+      setError(err.message || "No se pudo consultar el historial.");
     } finally {
       setCargando(false);
+
       setActualizando(false);
     }
   }, []);
 
   // ===================================================
+
   // CARGA INICIAL
+
   // ===================================================
 
   useEffect(() => {
@@ -181,15 +199,19 @@ function HistorialPage() {
   }, [cargarHistorial]);
 
   // ===================================================
+
   // OBTENER MÓDULOS DISPONIBLES
+
   // ===================================================
 
   const modulos = useMemo(() => {
     const valores = [
       ...new Set(
         historial
+
           .map((registro) => registro.modulo)
-          .filter(Boolean)
+
+          .filter(Boolean),
       ),
     ];
 
@@ -197,7 +219,9 @@ function HistorialPage() {
   }, [historial]);
 
   // ===================================================
+
   // FILTRAR HISTORIAL
+
   // ===================================================
 
   const historialFiltrado = useMemo(() => {
@@ -208,95 +232,98 @@ function HistorialPage() {
         !termino ||
         [
           registro.modulo,
+
           registro.accion,
+
           registro.descripcion,
+
           registro.referencia,
+
           registro.usuario,
-        ].some((campo) =>
-          normalizar(campo).includes(termino)
-        );
+        ].some((campo) => normalizar(campo).includes(termino));
 
       const coincideModulo =
-        filtroModulo === "Todos" ||
-        registro.modulo === filtroModulo;
+        filtroModulo === "Todos" || registro.modulo === filtroModulo;
 
       return coincideBusqueda && coincideModulo;
     });
   }, [historial, busqueda, filtroModulo]);
 
   // ===================================================
+
   // INDICADORES
+
   // ===================================================
 
   const totalMovimientos = historial.length;
 
   const movimientosFiltrados = historialFiltrado.length;
 
-  const totalCreaciones = historial.filter(
-    (registro) =>
-      normalizar(registro.accion).includes("creacion")
+  const totalCreaciones = historial.filter((registro) =>
+    normalizar(registro.accion).includes("creacion"),
   ).length;
 
-  const totalEdiciones = historial.filter(
-    (registro) =>
-      normalizar(registro.accion).includes("edicion")
+  const totalEdiciones = historial.filter((registro) =>
+    normalizar(registro.accion).includes("edicion"),
   ).length;
 
   // ===================================================
+
   // LIMPIAR HISTORIAL
+
   // ===================================================
 
   async function confirmarLimpieza() {
     if (!esAdministrador || limpiando) return;
 
     setLimpiando(true);
+
     setError("");
+
     setMensaje("");
 
     try {
       await limpiarHistorial();
 
       setHistorial([]);
+
       setBusqueda("");
+
       setFiltroModulo("Todos");
+
       setModalConfirmacion(false);
 
       setMensaje("El historial se limpió correctamente.");
-
     } catch (err) {
-      setError(
-        err.message || "No se pudo limpiar el historial."
-      );
+      setError(err.message || "No se pudo limpiar el historial.");
     } finally {
       setLimpiando(false);
     }
   }
 
   // ===================================================
+
   // INTERFAZ
+
   // ===================================================
 
   return (
     <section className="historial-page">
-
       {/* ENCABEZADO */}
 
       <div className="page-heading">
         <div>
-          <span className="page-eyebrow">
-            CONTROL Y SEGUIMIENTO
-          </span>
+          <span className="page-eyebrow">CONTROL Y SEGUIMIENTO</span>
 
           <h1>Historial de actividades</h1>
 
           <p>
-            Consulta los movimientos y las operaciones
-            realizadas dentro del sistema de almacén.
+            Consulta los movimientos y las operaciones realizadas dentro del
+            sistema de almacén.
           </p>
         </div>
 
         <div className="history-header-actions">
-
           <button
             type="button"
             className="button button-secondary"
@@ -322,7 +349,6 @@ function HistorialPage() {
               Limpiar historial
             </button>
           )}
-
         </div>
       </div>
 
@@ -331,6 +357,7 @@ function HistorialPage() {
       {error && (
         <div className="history-alert history-alert-error">
           <AlertCircle size={19} />
+
           <span>{error}</span>
         </div>
       )}
@@ -338,6 +365,7 @@ function HistorialPage() {
       {mensaje && (
         <div className="history-alert history-alert-success">
           <CheckCircle2 size={19} />
+
           <span>{mensaje}</span>
 
           <button
@@ -353,7 +381,6 @@ function HistorialPage() {
       {/* INDICADORES */}
 
       <div className="summary-grid">
-
         <article className="summary-card">
           <div className="history-stat-icon">
             <History size={21} />
@@ -401,25 +428,19 @@ function HistorialPage() {
 
           <small>Según los filtros aplicados</small>
         </article>
-
       </div>
 
       {/* TABLA PRINCIPAL */}
 
       <div className="content-card">
-
         <div className="table-toolbar">
-
           <div>
             <h2>Registro de actividades</h2>
 
-            <p>
-              Movimientos registrados por los usuarios del sistema.
-            </p>
+            <p>Movimientos registrados por los usuarios del sistema.</p>
           </div>
 
           <div className="history-filters">
-
             <div className="search-box">
               <Search size={18} />
 
@@ -427,9 +448,7 @@ function HistorialPage() {
                 type="search"
                 placeholder="Buscar actividad, usuario o referencia..."
                 value={busqueda}
-                onChange={(event) =>
-                  setBusqueda(event.target.value)
-                }
+                onChange={(event) => setBusqueda(event.target.value)}
               />
 
               {busqueda && (
@@ -445,9 +464,7 @@ function HistorialPage() {
 
             <select
               value={filtroModulo}
-              onChange={(event) =>
-                setFiltroModulo(event.target.value)
-              }
+              onChange={(event) => setFiltroModulo(event.target.value)}
               aria-label="Filtrar por módulo"
             >
               <option value="Todos">Todos los módulos</option>
@@ -458,62 +475,50 @@ function HistorialPage() {
                 </option>
               ))}
             </select>
-
           </div>
-
         </div>
 
         {/* TABLA */}
 
         <div className="table-wrapper">
-
           <table className="data-table">
-
             <thead>
               <tr>
                 <th>Fecha y hora</th>
+
                 <th>Módulo</th>
+
                 <th>Acción</th>
+
                 <th>Descripción</th>
+
                 <th>Referencia</th>
+
                 <th>Usuario</th>
               </tr>
             </thead>
 
             <tbody>
-
               {cargando ? (
-
                 <tr>
                   <td colSpan="6">
                     <div className="history-empty">
-                      <RefreshCw
-                        size={28}
-                        className="history-spinning"
-                      />
+                      <RefreshCw size={28} className="history-spinning" />
 
                       <strong>Cargando historial...</strong>
 
-                      <span>
-                        Consultando los registros de Railway.
-                      </span>
+                      <span>Consultando los registros de Railway.</span>
                     </div>
                   </td>
                 </tr>
-
               ) : historialFiltrado.length > 0 ? (
-
                 historialFiltrado.map((registro) => (
-
                   <tr key={registro.id}>
-
                     <td>
                       <div className="history-date">
                         <CalendarDays size={16} />
 
-                        <span>
-                          {formatearFecha(registro.fecha)}
-                        </span>
+                        <span>{formatearFecha(registro.fecha)}</span>
                       </div>
                     </td>
 
@@ -526,7 +531,7 @@ function HistorialPage() {
                     <td>
                       <span
                         className={`history-action ${obtenerClaseAccion(
-                          registro.accion
+                          registro.accion,
                         )}`}
                       >
                         {obtenerIcono(registro.accion)}
@@ -551,23 +556,15 @@ function HistorialPage() {
                       <div className="history-user">
                         <UserRound size={16} />
 
-                        <strong>
-                          {registro.usuario || "Sistema"}
-                        </strong>
+                        <strong>{registro.usuario || "Sistema"}</strong>
                       </div>
                     </td>
-
                   </tr>
-
                 ))
-
               ) : (
-
                 <tr>
                   <td colSpan="6">
-
                     <div className="history-empty">
-
                       {historial.length === 0 ? (
                         <History size={38} />
                       ) : (
@@ -585,24 +582,17 @@ function HistorialPage() {
                           ? "Las operaciones realizadas aparecerán aquí."
                           : "Prueba con otro término o selecciona otro módulo."}
                       </span>
-
                     </div>
-
                   </td>
                 </tr>
-
               )}
-
             </tbody>
-
           </table>
-
         </div>
 
         {/* PIE */}
 
         <div className="history-table-footer">
-
           <div>
             <Clock size={16} />
 
@@ -611,28 +601,18 @@ function HistorialPage() {
             </span>
           </div>
 
-          <span>
-            Datos centralizados en Railway
-          </span>
-
+          <span>Datos centralizados en Railway</span>
         </div>
-
       </div>
 
       {/* MODAL DE CONFIRMACIÓN */}
 
       {modalConfirmacion && esAdministrador && (
-
         <div className="modal-backdrop">
-
           <div className="modal-card">
-
             <div className="modal-header">
-
               <div>
-                <span className="page-eyebrow">
-                  CONFIRMAR OPERACIÓN
-                </span>
+                <span className="page-eyebrow">CONFIRMAR OPERACIÓN</span>
 
                 <h2>Limpiar historial</h2>
               </div>
@@ -646,27 +626,23 @@ function HistorialPage() {
               >
                 <X size={20} />
               </button>
-
             </div>
 
             <div className="history-confirmation">
-
               <AlertCircle size={34} />
 
               <p>
-                ¿Estás seguro de que deseas eliminar todos los
-                registros del historial?
+                ¿Estás seguro de que deseas eliminar todos los registros del
+                historial?
               </p>
 
               <small>
-                Esta operación eliminará los {totalMovimientos}
-                {" "}movimientos almacenados y no se podrá deshacer.
+                Esta operación eliminará los {totalMovimientos} movimientos
+                almacenados y no se podrá deshacer.
               </small>
-
             </div>
 
             <div className="modal-actions">
-
               <button
                 type="button"
                 className="button button-secondary"
@@ -686,15 +662,10 @@ function HistorialPage() {
 
                 {limpiando ? "Limpiando..." : "Sí, limpiar historial"}
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       )}
-
     </section>
   );
 }

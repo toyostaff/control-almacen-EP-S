@@ -16,14 +16,16 @@ function obtenerURL() {
 }
 
 // =============================================
-// PROCESAR RESPUESTA
+// PROCESAR RESPUESTA DEL SERVIDOR
 // =============================================
 
 async function procesarRespuesta(response) {
-  let resultado;
+  let resultado = {};
 
   try {
-    resultado = await response.json();
+    if (response.status !== 204) {
+      resultado = await response.json();
+    }
   } catch {
     throw new Error(
       "El servidor devolvió una respuesta inválida."
@@ -34,7 +36,7 @@ async function procesarRespuesta(response) {
     throw new Error(
       resultado?.mensaje ||
       resultado?.error ||
-      "Error al comunicarse con el servidor."
+      `Error del servidor (${response.status}).`
     );
   }
 
@@ -46,6 +48,13 @@ async function procesarRespuesta(response) {
 // =============================================
 
 export async function iniciarSesion(usuario, password) {
+
+  if (!usuario || !password) {
+    throw new Error(
+      "Usuario y contraseña son obligatorios."
+    );
+  }
+
   let response;
 
   try {
@@ -53,91 +62,39 @@ export async function iniciarSesion(usuario, password) {
       `${obtenerURL()}/api/auth/login`,
       {
         method: "POST",
-        credentials: "include",
+
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          Accept: "application/json",
         },
+
         body: JSON.stringify({
-          usuario,
-          password
-        })
+          usuario: String(usuario).trim(),
+          password: String(password),
+        }),
       }
     );
+
   } catch {
     throw new Error(
-      "No se pudo conectar con el servidor."
+      "No se pudo conectar con el servidor. Verifica tu conexión a internet."
     );
   }
 
   const resultado = await procesarRespuesta(response);
 
-  if (!resultado.usuario) {
+  // ===========================================
+  // VALIDAR TOKEN Y USUARIO
+  // ===========================================
+
+  if (!resultado.token || !resultado.usuario) {
     throw new Error(
-      "El servidor no devolvió los datos del usuario."
+      "El servidor no devolvió una sesión válida."
     );
   }
 
   return {
-    usuario: resultado.usuario
+    token: resultado.token,
+    usuario: resultado.usuario,
   };
-}
-
-// =============================================
-// RECUPERAR SESIÓN DEL NAVEGADOR
-// =============================================
-
-export async function obtenerSesion() {
-  let response;
-
-  try {
-    response = await fetch(
-      `${obtenerURL()}/api/auth/me`,
-      {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          Accept: "application/json"
-        }
-      }
-    );
-  } catch {
-    throw new Error(
-      "No se pudo verificar la sesión con el servidor."
-    );
-  }
-
-  if (response.status === 401) {
-    return null;
-  }
-
-  const resultado = await procesarRespuesta(response);
-
-  return resultado.usuario || null;
-}
-
-// =============================================
-// CERRAR SESIÓN
-// =============================================
-
-export async function cerrarSesionServidor() {
-  let response;
-
-  try {
-    response = await fetch(
-      `${obtenerURL()}/api/auth/logout`,
-      {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          Accept: "application/json"
-        }
-      }
-    );
-  } catch {
-    throw new Error(
-      "No se pudo conectar con el servidor para cerrar sesión."
-    );
-  }
-
-  return await procesarRespuesta(response);
 }

@@ -8,11 +8,7 @@ import {
   useRef,
 } from "react";
 
-import {
-  iniciarSesion,
-  obtenerSesion,
-  cerrarSesionServidor,
-} from "../services/authService";
+import { iniciarSesion } from "../services/authService";
 
 // =============================================
 // CONTEXTO DE USUARIO
@@ -21,11 +17,15 @@ import {
 const UserContext = createContext(null);
 
 // =============================================
-// CONFIGURACIÓN
+// CONFIGURACIÓN DE SESIÓN
 // =============================================
 
-const EVENTO_STORAGE = "almacen_session_event";
+const TOKEN_KEY = "almacen_token";
+const USER_KEY = "almacen_usuario";
+
 const CANAL_SESION = "almacen_session_channel";
+
+const TIEMPO_ESPERA_SINCRONIZACION = 1000;
 
 // =============================================
 // PERFILES DEL SISTEMA
@@ -50,12 +50,154 @@ function usuarioValido(usuario) {
 }
 
 // =============================================
+// DECODIFICAR JWT
+// =============================================
+
+function obtenerExpiracionToken(token) {
+  try {
+    if (typeof token !== "string") {
+      return null;
+    }
+
+    const partes = token.split(".");
+
+    if (partes.length !== 3) {
+      return null;
+    }
+
+    const base64 = partes[1]
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .padEnd(
+        Math.ceil(partes[1].length / 4) * 4,
+        "="
+      );
+
+    const binario = atob(base64);
+
+    const bytes = Uint8Array.from(
+      binario,
+      caracter => caracter.charCodeAt(0)
+    );
+
+    const payload = JSON.parse(
+      new TextDecoder().decode(bytes)
+    );
+
+    if (
+      !payload.exp ||
+      !Number.isFinite(payload.exp)
+    ) {
+      return null;
+    }
+
+    return payload.exp * 1000;
+
+  } catch {
+    return null;
+  }
+}
+
+// =============================================
+// VALIDAR TOKEN JWT
+// =============================================
+
+function tokenValido(token) {
+  if (!token || typeof token !== "string") {
+    return false;
+  }
+
+  const expiracion = obtenerExpiracionToken(token);
+
+  if (!expiracion) {
+    return false;
+  }
+
+  return Date.now() < expiracion;
+}
+
+// =============================================
+// LEER SESIÓN DE LA PESTAÑA ACTUAL
+// =============================================
+
+function obtenerSesionGuardada() {
+  try {
+    const token = sessionStorage.getItem(TOKEN_KEY);
+
+    const usuarioGuardado = sessionStorage.getItem(USER_KEY);
+
+    if (!token || !usuarioGuardado) {
+      return {
+        token: null,
+        usuario: null,
+      };
+    }
+
+    const usuario = JSON.parse(usuarioGuardado);
+
+    if (
+      !tokenValido(token) ||
+      !usuarioValido(usuario)
+    ) {
+      throw new Error("Sesión inválida o expirada.");
+    }
+
+    return {
+      token,
+      usuario,
+    };
+
+  } catch {
+    eliminarSesion();
+
+    return {
+      token: null,
+      usuario: null,
+    };
+  }
+}
+
+// =============================================
+// GUARDAR SESIÓN
+// =============================================
+
+function guardarSesion(token, usuario) {
+  if (
+    !tokenValido(token) ||
+    !usuarioValido(usuario)
+  ) {
+    throw new Error(
+      "No se puede guardar una sesión inválida."
+    );
+  }
+
+  sessionStorage.setItem(TOKEN_KEY, token);
+
+  sessionStorage.setItem(
+    USER_KEY,
+    JSON.stringify(usuario)
+  );
+}
+
+// =============================================
+// ELIMINAR SESIÓN
+// =============================================
+
+function eliminarSesion() {
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
+}
+
+// =============================================
 // PROVEEDOR DE USUARIO
 // =============================================
 
 export function UserProvider({ children }) {
 
-  const [usuario, setUsuario] = useState(null);
+  const [sesion, setSesion] = useState({
+    token: null,
+    usuario: null,
+  });
 
   const [verificandoSesion, setVerificandoSesion] = useState(true);
 
@@ -63,13 +205,19 @@ export function UserProvider({ children }) {
 
   const canalRef = useRef(null);
 
+  const temporizadorRef = useRef(null);
+
   const montadoRef = useRef(false);
 
   // ===========================================
   // DATOS DE AUTENTICACIÓN
   // ===========================================
 
-  const autenticado = Boolean(usuario);
+  const token = sesion.token;
+
+  const usuario = sesion.usuario;
+
+  const autenticado = Boolean(token && usuario);
 
   const perfil = usuario?.rol || null;
 
@@ -79,102 +227,187 @@ export function UserProvider({ children }) {
   // NOTIFICAR A OTRAS PESTAÑAS
   // ===========================================
 
-  const notificarOtrasPestanas = useCallback((tipo) => {
+  const notificarOtrasPestanas = useCallback((mensaje) => {
 
-    const mensaje = {
-      tipo,
-      fecha: Date.now(),
-    };
-
-    // Comunicación principal entre pestañas.
     if (canalRef.current) {
       canalRef.current.postMessage(mensaje);
     }
 
-    // Alternativa para navegadores sin BroadcastChannel.
-    try {
-      localStorage.setItem(
-        EVENTO_STORAGE,
-        JSON.stringify(mensaje)
-      );
-    } catch {
-      // La sesión sigue funcionando aunque
-      // el almacenamiento de señales no esté disponible.
+  }, []);
+
+  // ===========================================
+  // CERRAR SESIÓN LOCAL
+  // ===========================================
+
+  const cerrarSesionLocal = useCallback(() => {
+
+    eliminarSesion();
+
+    if (temporizadorRef.current) {
+      clearTimeout(temporizadorRef.current);
+      temporizadorRef.current = null;
+    }
+
+    if (montadoRef.current) {
+      setSesion({
+        token: null,
+        usuario: null,
+      });
     }
 
   }, []);
 
   // ===========================================
-  // RECUPERAR SESIÓN DESDE EL BACKEND
+  // PROGRAMAR EXPIRACIÓN AUTOMÁTICA
   // ===========================================
 
-  const verificarSesion = useCallback(async () => {
+  const programarExpiracion = useCallback((tokenActual) => {
+
+    if (temporizadorRef.current) {
+      clearTimeout(temporizadorRef.current);
+      temporizadorRef.current = null;
+    }
+
+    const expiracion = obtenerExpiracionToken(tokenActual);
+
+    if (!expiracion) {
+      cerrarSesionLocal();
+
+      notificarOtrasPestanas({
+        tipo: "logout",
+      });
+
+      return;
+    }
+
+    const tiempoRestante = expiracion - Date.now();
+
+    if (tiempoRestante <= 0) {
+      cerrarSesionLocal();
+
+      notificarOtrasPestanas({
+        tipo: "logout",
+      });
+
+      if (window.location.pathname !== "/login") {
+        window.location.replace("/login");
+      }
+
+      return;
+    }
+
+    temporizadorRef.current = setTimeout(() => {
+
+      cerrarSesionLocal();
+
+      notificarOtrasPestanas({
+        tipo: "logout",
+      });
+
+      if (window.location.pathname !== "/login") {
+        window.location.replace("/login");
+      }
+
+    }, Math.min(tiempoRestante, 2147483647));
+
+  }, [
+    cerrarSesionLocal,
+    notificarOtrasPestanas,
+  ]);
+
+  // ===========================================
+  // RESTAURAR SESIÓN EN ESTA PESTAÑA
+  // ===========================================
+
+  const restaurarSesion = useCallback((tokenRecibido, usuarioRecibido) => {
+
+    if (
+      !tokenValido(tokenRecibido) ||
+      !usuarioValido(usuarioRecibido)
+    ) {
+      return false;
+    }
 
     try {
 
-      const usuarioServidor = await obtenerSesion();
-
-      if (!montadoRef.current) {
-        return null;
-      }
-
-      if (!usuarioValido(usuarioServidor)) {
-        setUsuario(null);
-        return null;
-      }
-
-      setUsuario(usuarioServidor);
-
-      return usuarioServidor;
-
-    } catch (error) {
+      guardarSesion(tokenRecibido, usuarioRecibido);
 
       if (montadoRef.current) {
-        setUsuario(null);
+
+        setSesion({
+          token: tokenRecibido,
+          usuario: usuarioRecibido,
+        });
+
+        programarExpiracion(tokenRecibido);
+
+        setVerificandoSesion(false);
       }
 
-      throw error;
+      return true;
+
+    } catch {
+      return false;
     }
 
-  }, []);
+  }, [programarExpiracion]);
 
   // ===========================================
-  // COMPROBAR SESIÓN AL ABRIR LA APLICACIÓN
+  // INICIALIZAR SESIÓN
   // ===========================================
 
   useEffect(() => {
 
     montadoRef.current = true;
 
-    async function inicializarSesion() {
+    const sesionGuardada = obtenerSesionGuardada();
 
-      try {
+    if (sesionGuardada.token) {
 
-        await verificarSesion();
+      setSesion(sesionGuardada);
 
-      } catch (error) {
+      programarExpiracion(sesionGuardada.token);
 
-        console.error(
-          "No se pudo comprobar la sesión:",
-          error.message
-        );
+      setVerificandoSesion(false);
 
-      } finally {
+    } else {
+
+      // Esperar una posible sesión de otra pestaña.
+
+      const temporizador = setTimeout(() => {
 
         if (montadoRef.current) {
           setVerificandoSesion(false);
         }
 
-      }
+      }, TIEMPO_ESPERA_SINCRONIZACION);
+
+      return () => {
+
+        clearTimeout(temporizador);
+
+        montadoRef.current = false;
+
+        if (temporizadorRef.current) {
+          clearTimeout(temporizadorRef.current);
+          temporizadorRef.current = null;
+        }
+
+      };
     }
 
-    inicializarSesion();
-
     return () => {
+
       montadoRef.current = false;
+
+      if (temporizadorRef.current) {
+        clearTimeout(temporizadorRef.current);
+        temporizadorRef.current = null;
+      }
+
     };
 
-  }, [verificarSesion]);
+  }, [programarExpiracion]);
 
   // ===========================================
   // SINCRONIZACIÓN ENTRE PESTAÑAS
@@ -182,79 +415,130 @@ export function UserProvider({ children }) {
 
   useEffect(() => {
 
-    // Crear canal de comunicación.
-    if ("BroadcastChannel" in window) {
+    if (!("BroadcastChannel" in window)) {
+      console.warn(
+        "Este navegador no admite sincronización mediante BroadcastChannel."
+      );
 
-      canalRef.current = new BroadcastChannel(CANAL_SESION);
-
+      return;
     }
 
-    // Procesar eventos recibidos.
-    async function manejarEvento(mensaje) {
+    const canal = new BroadcastChannel(CANAL_SESION);
 
-      if (!mensaje?.tipo) return;
+    canalRef.current = canal;
 
-      if (mensaje.tipo === "logout") {
+    function manejarMensaje(event) {
 
-        setUsuario(null);
+      const mensaje = event.data;
+
+      if (!mensaje?.tipo) {
+        return;
+      }
+
+      // Solicitud de sesión de otra pestaña.
+
+      if (mensaje.tipo === "session-request") {
+
+        const actual = obtenerSesionGuardada();
+
+        if (actual.token && actual.usuario) {
+
+          canal.postMessage({
+            tipo: "session-response",
+            token: actual.token,
+            usuario: actual.usuario,
+          });
+
+        }
 
         return;
       }
 
-      if (mensaje.tipo === "login") {
+      // Recibir sesión de otra pestaña.
 
-        try {
-          await verificarSesion();
-        } catch (error) {
-          console.error(
-            "No se pudo sincronizar la sesión:",
-            error.message
-          );
+      if (
+        mensaje.tipo === "session-response" ||
+        mensaje.tipo === "login"
+      ) {
+
+        const restaurada = restaurarSesion(
+          mensaje.token,
+          mensaje.usuario
+        );
+
+        if (restaurada) {
+          setVerificandoSesion(false);
+        }
+
+        return;
+      }
+
+      // Cierre de sesión desde otra pestaña.
+
+      if (mensaje.tipo === "logout") {
+
+        cerrarSesionLocal();
+
+        setVerificandoSesion(false);
+
+        if (window.location.pathname !== "/login") {
+          window.location.replace("/login");
         }
 
       }
 
     }
 
-    // BroadcastChannel.
-    function manejarMensaje(event) {
-      manejarEvento(event.data);
-    }
-
-    canalRef.current?.addEventListener(
+    canal.addEventListener(
       "message",
       manejarMensaje
     );
 
-    // Alternativa mediante localStorage.
-    function manejarStorage(event) {
+    // Solicitar sesión a las pestañas activas.
 
-      if (event.key !== EVENTO_STORAGE || !event.newValue) {
-        return;
-      }
+    const actual = obtenerSesionGuardada();
 
-      try {
+    if (!actual.token) {
 
-        const mensaje = JSON.parse(event.newValue);
+      canal.postMessage({
+        tipo: "session-request",
+      });
 
-        manejarEvento(mensaje);
-
-      } catch {
-        // Ignorar señales inválidas.
-      }
     }
 
-    window.addEventListener(
-      "storage",
-      manejarStorage
-    );
+    return () => {
 
-    // Cierre por sesión expirada.
+      canal.removeEventListener(
+        "message",
+        manejarMensaje
+      );
+
+      canal.close();
+
+      if (canalRef.current === canal) {
+        canalRef.current = null;
+      }
+
+    };
+
+  }, [
+    restaurarSesion,
+    cerrarSesionLocal,
+  ]);
+
+  // ===========================================
+  // DETECTAR SESIÓN EXPIRADA DESDE api.js
+  // ===========================================
+
+  useEffect(() => {
+
     function manejarSesionExpirada() {
 
-      setUsuario(null);
+      cerrarSesionLocal();
 
-      notificarOtrasPestanas("logout");
+      notificarOtrasPestanas({
+        tipo: "logout",
+      });
 
     }
 
@@ -265,20 +549,6 @@ export function UserProvider({ children }) {
 
     return () => {
 
-      canalRef.current?.removeEventListener(
-        "message",
-        manejarMensaje
-      );
-
-      canalRef.current?.close();
-
-      canalRef.current = null;
-
-      window.removeEventListener(
-        "storage",
-        manejarStorage
-      );
-
       window.removeEventListener(
         "almacen:session-expired",
         manejarSesionExpirada
@@ -286,7 +556,73 @@ export function UserProvider({ children }) {
 
     };
 
-  }, [verificarSesion, notificarOtrasPestanas]);
+  }, [
+    cerrarSesionLocal,
+    notificarOtrasPestanas,
+  ]);
+
+  // ===========================================
+  // COMPROBAR EXPIRACIÓN AL VOLVER A LA PESTAÑA
+  // ===========================================
+
+  useEffect(() => {
+
+    function comprobarExpiracion() {
+
+      if (document.hidden || !token) {
+        return;
+      }
+
+      if (!tokenValido(token)) {
+
+        cerrarSesionLocal();
+
+        notificarOtrasPestanas({
+          tipo: "logout",
+        });
+
+        if (window.location.pathname !== "/login") {
+          window.location.replace("/login");
+        }
+
+      } else {
+
+        programarExpiracion(token);
+
+      }
+
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      comprobarExpiracion
+    );
+
+    window.addEventListener(
+      "focus",
+      comprobarExpiracion
+    );
+
+    return () => {
+
+      document.removeEventListener(
+        "visibilitychange",
+        comprobarExpiracion
+      );
+
+      window.removeEventListener(
+        "focus",
+        comprobarExpiracion
+      );
+
+    };
+
+  }, [
+    token,
+    cerrarSesionLocal,
+    notificarOtrasPestanas,
+    programarExpiracion,
+  ]);
 
   // ===========================================
   // INICIAR SESIÓN
@@ -303,21 +639,46 @@ export function UserProvider({ children }) {
         password
       );
 
+      const nuevoToken = resultado?.token;
+
       const nuevoUsuario = resultado?.usuario;
 
-      if (!usuarioValido(nuevoUsuario)) {
+      if (!tokenValido(nuevoToken)) {
+        throw new Error(
+          "El servidor devolvió un token inválido o expirado."
+        );
+      }
 
+      if (!usuarioValido(nuevoUsuario)) {
         throw new Error(
           "El servidor no devolvió un usuario válido."
         );
-
       }
 
-      // La cookie ya fue guardada por el backend.
-      setUsuario(nuevoUsuario);
+      // Guardar sesión de esta pestaña.
 
-      // Avisar a las otras pestañas.
-      notificarOtrasPestanas("login");
+      guardarSesion(nuevoToken, nuevoUsuario);
+
+      setSesion({
+        token: nuevoToken,
+        usuario: nuevoUsuario,
+      });
+
+      // Programar expiración JWT.
+
+      programarExpiracion(nuevoToken);
+
+      // Finalizar verificación.
+
+      setVerificandoSesion(false);
+
+      // Sincronizar con otras pestañas.
+
+      notificarOtrasPestanas({
+        tipo: "login",
+        token: nuevoToken,
+        usuario: nuevoUsuario,
+      });
 
       return nuevoUsuario;
 
@@ -327,35 +688,31 @@ export function UserProvider({ children }) {
 
     }
 
-  }, [notificarOtrasPestanas]);
+  }, [
+    notificarOtrasPestanas,
+    programarExpiracion,
+  ]);
 
   // ===========================================
   // CERRAR SESIÓN
   // ===========================================
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(() => {
 
-    // Cerrar inmediatamente la sesión visual.
-    setUsuario(null);
+    // Cerrar sesión de esta pestaña.
 
-    // Sincronizar el cierre con otras pestañas.
-    notificarOtrasPestanas("logout");
+    cerrarSesionLocal();
 
-    try {
+    // Avisar a las demás pestañas.
 
-      // Eliminar la cookie en el servidor.
-      await cerrarSesionServidor();
+    notificarOtrasPestanas({
+      tipo: "logout",
+    });
 
-    } catch (error) {
-
-      console.error(
-        "No se pudo confirmar el cierre de sesión:",
-        error.message
-      );
-
-    }
-
-  }, [notificarOtrasPestanas]);
+  }, [
+    cerrarSesionLocal,
+    notificarOtrasPestanas,
+  ]);
 
   // ===========================================
   // VALORES DEL CONTEXTO
@@ -363,6 +720,7 @@ export function UserProvider({ children }) {
 
   const valor = {
     usuario,
+    token,
     perfil,
     esAdministrador,
     autenticado,
@@ -389,11 +747,9 @@ export function useUser() {
   const context = useContext(UserContext);
 
   if (!context) {
-
     throw new Error(
       "useUser debe utilizarse dentro de UserProvider."
     );
-
   }
 
   return context;

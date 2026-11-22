@@ -25,7 +25,7 @@ import {
   cambiarEstadoRegistro,
 } from "../../services/inventarioService";
 
-import { ubicacionesAlmacen } from "../../data/ubicaciones";
+import { obtenerUbicaciones } from "../../services/ubicacionesService";
 
 const formularioInicial = {
   skuId: "",
@@ -52,6 +52,7 @@ function normalizarTexto(texto) {
 function InventarioPage() {
   const [inventario, setInventario] = useState([]);
   const [catalogo, setCatalogo] = useState([]);
+  const [ubicaciones, setUbicaciones] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [busquedaMaterial, setBusquedaMaterial] = useState("");
   const [mostrarResultados, setMostrarResultados] = useState(false);
@@ -70,17 +71,38 @@ function InventarioPage() {
   // CARGA DE DATOS DESDE RAILWAY
   async function cargarDatos() {
     try {
-      const [registros, materiales] = await Promise.all([
+      const [registros, materiales, espacios] = await Promise.all([
         obtenerInventario(),
         obtenerCatalogo(),
+        obtenerUbicaciones(),
       ]);
 
       setInventario(Array.isArray(registros) ? registros : []);
+
       setCatalogo(
         (Array.isArray(materiales) ? materiales : []).filter(
           (material) => material.estado === "Activo",
         ),
       );
+
+      // Las ubicaciones se obtienen del backend; no se usa una lista local.
+      const ubicacionesNormalizadas = (
+        Array.isArray(espacios) ? espacios : []
+      ).map((ubicacion) => ({
+        ...ubicacion,
+        id: String(ubicacion.id),
+        nombre: String(ubicacion.nombre ?? ubicacion.id),
+        tieneSubdivisiones: Boolean(ubicacion.tieneSubdivisiones),
+        subdivisiones: (Array.isArray(ubicacion.subdivisiones)
+          ? ubicacion.subdivisiones
+          : []
+        ).map((division) => ({
+          ...division,
+          id: String(division.id ?? division.codigo),
+        })),
+      }));
+
+      setUbicaciones(ubicacionesNormalizadas);
     } catch (err) {
       setError(err.message || "No se pudieron cargar los datos del almacén.");
     }
@@ -138,8 +160,8 @@ function InventarioPage() {
     (registro) => registro.estado === "Inactivo",
   ).length;
 
-  const ubicacionFormulario = ubicacionesAlmacen.find(
-    (ubicacion) => ubicacion.nombre === formulario.ubicacion,
+  const ubicacionFormulario = ubicaciones.find(
+    (ubicacion) => String(ubicacion.id) === String(formulario.ubicacion),
   );
 
   // ==========================================
@@ -147,11 +169,13 @@ function InventarioPage() {
   // ==========================================
 
   function obtenerRegistrosOcupantes(ubicacion) {
+    if (!ubicacion) return [];
+
     return inventario.filter(
       (registro) =>
         registro.estado === "Activo" &&
-        registro.ubicacion === ubicacion.nombre &&
-        registro.id !== registroEditando?.id,
+        String(registro.ubicacion) === String(ubicacion.id) &&
+        String(registro.id) !== String(registroEditando?.id ?? ""),
     );
   }
 
@@ -159,13 +183,21 @@ function InventarioPage() {
     const registros = obtenerRegistrosOcupantes(ubicacion);
 
     const capacidad = ubicacion.tieneSubdivisiones
-      ? ubicacion.subdivisiones?.length || 6
+      ? ubicacion.subdivisiones?.length || 0
       : 1;
 
-    const ocupados = registros.length;
+    // Contar espacios internos ocupados, no solamente filas de inventario.
+    const ocupados = ubicacion.tieneSubdivisiones
+      ? new Set(
+          registros
+            .map((registro) => String(registro.subdivision || ""))
+            .filter(Boolean),
+        ).size
+      : registros.length > 0
+        ? 1
+        : 0;
 
     const disponibles = Math.max(0, capacidad - ocupados);
-
     const porcentaje =
       capacidad > 0
         ? Math.min(100, Math.round((ocupados / capacidad) * 100))
@@ -176,17 +208,19 @@ function InventarioPage() {
       ocupados,
       disponibles,
       porcentaje,
-      completa: disponibles === 0,
+      completa: capacidad === 0 || disponibles === 0,
     };
   }
 
   function divisionEstaOcupada(ubicacion, divisionId) {
+    if (!ubicacion) return false;
+
     return inventario.some(
       (registro) =>
         registro.estado === "Activo" &&
-        registro.ubicacion === ubicacion.nombre &&
-        registro.subdivision === divisionId &&
-        registro.id !== registroEditando?.id,
+        String(registro.ubicacion) === String(ubicacion.id) &&
+        String(registro.subdivision || "") === String(divisionId) &&
+        String(registro.id) !== String(registroEditando?.id ?? ""),
     );
   }
 
@@ -255,7 +289,7 @@ function InventarioPage() {
   }
 
   // ==========================================
-  // ACTUALIZACIÃ“N DE CAMPOS
+  // ACTUALIZACIÓN DE CAMPOS
   // ==========================================
 
   function actualizarCampo(event) {
@@ -282,7 +316,7 @@ function InventarioPage() {
   }
 
   // ==========================================
-  // SELECCIÃ“N DE MATERIAL
+  // SELECCIÓN DE MATERIAL
   // ==========================================
 
   function seleccionarMaterial(material) {
@@ -313,20 +347,20 @@ function InventarioPage() {
   }
 
   // ==========================================
-  // SELECCIÃ“N DE UBICACIONES
+  // SELECCIÓN DE UBICACIONES
   // ==========================================
 
   function seleccionarUbicacion(ubicacion) {
     const capacidad = obtenerCapacidadUbicacion(ubicacion);
 
     if (capacidad.completa) {
-      setError("Esta ubicaciÃ³n estÃ¡ completa. Selecciona otra.");
+      setError("Esta ubicación está completa. Selecciona otra.");
       return;
     }
 
     setFormulario((actual) => ({
       ...actual,
-      ubicacion: ubicacion.nombre,
+      ubicacion: String(ubicacion.id),
       subdivision: "",
     }));
 
@@ -337,7 +371,7 @@ function InventarioPage() {
 
   function seleccionarSubdivision(division) {
     if (divisionEstaOcupada(ubicacionFormulario, division.id)) {
-      setError("Esta divisiÃ³n ya estÃ¡ ocupada. Selecciona otra.");
+      setError("Esta división ya está ocupada. Selecciona otra.");
       return;
     }
 
@@ -351,7 +385,7 @@ function InventarioPage() {
   }
 
   // ==========================================
-  // FOTOGRAFÃAS
+  // FOTOGRAFÍAS
   // ==========================================
 
   function cambiarFotografia(event) {
@@ -368,7 +402,7 @@ function InventarioPage() {
     }
 
     if (archivo.size > 2 * 1024 * 1024) {
-      setError("La fotografÃ­a no debe superar los 2 MB.");
+      setError("La fotografía no debe superar los 2 MB.");
       event.target.value = "";
       return;
     }
@@ -385,7 +419,7 @@ function InventarioPage() {
     };
 
     lector.onerror = () => {
-      setError("No se pudo leer la fotografÃ­a.");
+      setError("No se pudo leer la fotografía.");
     };
 
     lector.readAsDataURL(archivo);
@@ -408,7 +442,7 @@ function InventarioPage() {
   }
 
   // ==========================================
-  // VALIDACIÃ“N Y GUARDADO
+  // VALIDACIÓN Y GUARDADO
   // ==========================================
 
   async function guardarRegistro(event) {
@@ -417,65 +451,70 @@ function InventarioPage() {
 
     try {
       if (!formulario.skuId) {
-        throw new Error("Debes seleccionar un material del CatÃ¡logo Maestro.");
+        throw new Error("Debes seleccionar un material del Catálogo Maestro.");
       }
 
       if (!formulario.ubicacion) {
-        throw new Error("Debes seleccionar una ubicaciÃ³n.");
+        throw new Error("Debes seleccionar una ubicación.");
       }
 
-      const ubicacionSeleccionada = ubicacionesAlmacen.find(
-        (ubicacion) => ubicacion.nombre === formulario.ubicacion,
+      const ubicacionSeleccionada = ubicaciones.find(
+        (ubicacion) => String(ubicacion.id) === String(formulario.ubicacion),
       );
 
       if (!ubicacionSeleccionada) {
-        throw new Error("La ubicaciÃ³n seleccionada no existe.");
+        throw new Error("La ubicación seleccionada no existe.");
       }
 
       // VALIDAR CAPACIDAD
       const capacidad = obtenerCapacidadUbicacion(ubicacionSeleccionada);
 
       if (capacidad.completa) {
-        throw new Error("Esta ubicaciÃ³n ya estÃ¡ completa. Selecciona otra.");
+        throw new Error("Esta ubicación ya está completa. Selecciona otra.");
       }
 
       // VALIDAR DIVISIONES
       if (ubicacionSeleccionada.tieneSubdivisiones) {
         if (!formulario.subdivision) {
-          throw new Error("Debes seleccionar una divisiÃ³n interna.");
+          throw new Error("Debes seleccionar una división interna.");
         }
 
         const divisionExiste = ubicacionSeleccionada.subdivisiones?.some(
-          (division) => division.id === formulario.subdivision,
+          (division) => String(division.id) === String(formulario.subdivision),
         );
 
         if (!divisionExiste) {
-          throw new Error("La divisiÃ³n seleccionada no es vÃ¡lida.");
+          throw new Error("La división seleccionada no es válida.");
         }
 
         if (
           divisionEstaOcupada(ubicacionSeleccionada, formulario.subdivision)
         ) {
-          throw new Error("Esta divisiÃ³n ya estÃ¡ ocupada. Selecciona otra.");
+          throw new Error("Esta división ya está ocupada. Selecciona otra.");
         }
       } else {
-        // UNA SOLA PLAZA PARA UBICACIONES ESTÃNDAR
+        // UNA SOLA PLAZA PARA UBICACIONES ESTÁNDAR
         if (capacidad.ocupados >= 1) {
-          throw new Error("Esta ubicaciÃ³n ya estÃ¡ ocupada.");
+          throw new Error("Esta ubicación ya está ocupada.");
         }
 
-        // Las ubicaciones estÃ¡ndar no utilizan subdivisiones.
+        // Las ubicaciones estándar no utilizan subdivisiones.
         if (formulario.subdivision) {
-          throw new Error("Esta ubicaciÃ³n no dispone de divisiones internas.");
+          throw new Error("Esta ubicación no dispone de divisiones internas.");
         }
       }
 
       if (formulario.tieneCodigo && !formulario.codigo.trim()) {
-        throw new Error("Debes ingresar el cÃ³digo del repuesto.");
+        throw new Error("Debes ingresar el código del repuesto.");
       }
 
       const datos = {
         ...formulario,
+        // El backend espera el ID real de ubicaciones.id.
+        ubicacion: String(ubicacionSeleccionada.id),
+        subdivision: formulario.subdivision
+          ? String(formulario.subdivision)
+          : "",
         codigo: formulario.tieneCodigo ? formulario.codigo.trim() : "",
         codigoReemplazo: formulario.tieneCodigo
           ? formulario.codigoReemplazo.trim()
@@ -506,9 +545,7 @@ function InventarioPage() {
       await cambiarEstadoRegistro(id);
       await cargarDatos();
     } catch (err) {
-      setError(
-        err.message || "No se pudo actualizar el estado del repuesto.",
-      );
+      setError(err.message || "No se pudo actualizar el estado del repuesto.");
     }
   }
 
@@ -527,8 +564,8 @@ function InventarioPage() {
           <h1>Inventario</h1>
 
           <p>
-            Asocia los cÃ³digos utilizados en almacÃ©n con los materiales
-            registrados en el CatÃ¡logo Maestro.
+            Asocia los códigos utilizados en almacén con los materiales
+            registrados en el Catálogo Maestro.
           </p>
         </div>
 
@@ -538,7 +575,7 @@ function InventarioPage() {
           onClick={abrirNuevoRegistro}
         >
           <Plus size={19} />
-          Nueva asociaciÃ³n
+          Nueva asociación
         </button>
       </div>
 
@@ -570,7 +607,7 @@ function InventarioPage() {
         <div className="table-toolbar">
           <div>
             <h2>Inventario registrado</h2>
-            <p>IdentificaciÃ³n de materiales y su ubicaciÃ³n fÃ­sica.</p>
+            <p>Identificación de materiales y su ubicación física.</p>
           </div>
 
           <div className="search-box">
@@ -578,7 +615,7 @@ function InventarioPage() {
 
             <input
               type="search"
-              placeholder="Buscar material, SKU, cÃ³digo o ubicaciÃ³n..."
+              placeholder="Buscar material, SKU, código o ubicación..."
               value={busqueda}
               onChange={(event) => setBusqueda(event.target.value)}
             />
@@ -591,9 +628,9 @@ function InventarioPage() {
               <tr>
                 <th>SKU</th>
                 <th>Material</th>
-                <th>CÃ³digo</th>
+                <th>Código</th>
                 <th>Reemplazo</th>
-                <th>UbicaciÃ³n</th>
+                <th>Ubicación</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -612,16 +649,16 @@ function InventarioPage() {
 
                   <td>
                     <span className="external-code">
-                      {registro.codigo || "Sin cÃ³digo"}
+                      {registro.codigo || "Sin código"}
                     </span>
                   </td>
 
-                  <td>{registro.codigoReemplazo || "â€”"}</td>
+                  <td>{registro.codigoReemplazo || "—"}</td>
 
                   <td>
                     <span className="location-badge">
                       {registro.ubicacion}
-                      {registro.subdivision ? ` Â· ${registro.subdivision}` : ""}
+                      {registro.subdivision ? ` · ${registro.subdivision}` : ""}
                     </span>
                   </td>
 
@@ -642,7 +679,7 @@ function InventarioPage() {
                       <button
                         type="button"
                         className="icon-action"
-                        title="Editar asociaciÃ³n"
+                        title="Editar asociación"
                         onClick={() => abrirEdicion(registro)}
                       >
                         <Pencil size={17} />
@@ -674,8 +711,8 @@ function InventarioPage() {
                       <strong>No hay asociaciones registradas</strong>
 
                       <span>
-                        Registra el primer material y asÃ­gnale una ubicaciÃ³n
-                        fÃ­sica.
+                        Registra el primer material y asígnale una ubicación
+                        física.
                       </span>
                     </div>
                   </td>
@@ -703,13 +740,13 @@ function InventarioPage() {
             <div className="modal-header">
               <div>
                 <span className="page-eyebrow">
-                  {registroEditando ? "EDITAR ASOCIACIÃ“N" : "NUEVA ASOCIACIÃ“N"}
+                  {registroEditando ? "EDITAR ASOCIACIÓN" : "NUEVA ASOCIACIÓN"}
                 </span>
 
                 <h2>
                   {registroEditando
                     ? "Editar material en inventario"
-                    : "Asignar ubicaciÃ³n al material"}
+                    : "Asignar ubicación al material"}
                 </h2>
               </div>
 
@@ -729,7 +766,7 @@ function InventarioPage() {
               {!registroEditando && (
                 <div className="form-group form-full material-search-container">
                   <label htmlFor="materialSearch">
-                    Material del CatÃ¡logo Maestro *
+                    Material del Catálogo Maestro *
                   </label>
 
                   <div className="material-search-input">
@@ -786,10 +823,10 @@ function InventarioPage() {
                 </div>
               )}
 
-              {/* FOTOGRAFÃA */}
+              {/* FOTOGRAFÍA */}
 
               <div className="form-group form-full inventory-photo-field">
-                <label>FotografÃ­a del repuesto (opcional)</label>
+                <label>Fotografía del repuesto (opcional)</label>
 
                 <div className="inventory-photo-content">
                   <div className="inventory-photo-preview">
@@ -810,7 +847,7 @@ function InventarioPage() {
                       onClick={() => camaraInputRef.current?.click()}
                     >
                       <Camera size={16} />
-                      Tomar fotografÃ­a
+                      Tomar fotografía
                     </button>
 
                     <button
@@ -819,7 +856,7 @@ function InventarioPage() {
                       onClick={() => galeriaInputRef.current?.click()}
                     >
                       <ImageIcon size={16} />
-                      Elegir de galerÃ­a
+                      Elegir de galería
                     </button>
 
                     {formulario.foto && (
@@ -829,13 +866,13 @@ function InventarioPage() {
                         onClick={eliminarFotografia}
                       >
                         <Trash2 size={14} />
-                        Quitar fotografÃ­a
+                        Quitar fotografía
                       </button>
                     )}
                   </div>
                 </div>
 
-                <small>JPG, PNG o WEBP. TamaÃ±o mÃ¡ximo: 2 MB.</small>
+                <small>JPG, PNG o WEBP. Tamaño máximo: 2 MB.</small>
 
                 <input
                   ref={camaraInputRef}
@@ -855,16 +892,16 @@ function InventarioPage() {
                 />
               </div>
 
-              {/* CÃ“DIGOS */}
+              {/* CÓDIGOS */}
 
               <div className="inventory-form-grid">
                 <div className="form-group form-full code-question">
-                  <label>Â¿El repuesto tiene cÃ³digo?</label>
+                  <label>¿El repuesto tiene código?</label>
 
                   <div
                     className="code-radio-group"
                     role="radiogroup"
-                    aria-label="Â¿El repuesto tiene cÃ³digo?"
+                    aria-label="¿El repuesto tiene código?"
                   >
                     <label
                       className={`code-radio-option ${
@@ -880,7 +917,7 @@ function InventarioPage() {
                       />
 
                       <Check size={19} />
-                      <span>SÃ­, tiene cÃ³digo</span>
+                      <span>Sí, tiene código</span>
                     </label>
 
                     <label
@@ -897,7 +934,7 @@ function InventarioPage() {
                       />
 
                       <X size={19} />
-                      <span>No tiene cÃ³digo</span>
+                      <span>No tiene código</span>
                     </label>
                   </div>
                 </div>
@@ -907,7 +944,7 @@ function InventarioPage() {
                     <div className="form-group">
                       <label htmlFor="codigo">
                         <Barcode size={15} />
-                        CÃ³digo del repuesto *
+                        Código del repuesto *
                       </label>
 
                       <input
@@ -920,12 +957,12 @@ function InventarioPage() {
                         required
                       />
 
-                      <small>Ingresa el cÃ³digo utilizado por el almacÃ©n.</small>
+                      <small>Ingresa el código utilizado por el almacén.</small>
                     </div>
 
                     <div className="form-group">
                       <label htmlFor="codigoReemplazo">
-                        CÃ³digo de reemplazo
+                        Código de reemplazo
                       </label>
 
                       <input
@@ -937,18 +974,18 @@ function InventarioPage() {
                         placeholder="Opcional"
                       />
 
-                      <small>Solo si existe un cÃ³digo alternativo.</small>
+                      <small>Solo si existe un código alternativo.</small>
                     </div>
                   </>
                 )}
               </div>
 
-              {/* UBICACIÃ“N FÃSICA */}
+              {/* UBICACIÓN FÍSICA */}
 
               <div className="form-group form-full">
                 <label>
                   <MapPin size={15} />
-                  UbicaciÃ³n fÃ­sica *
+                  Ubicación física *
                 </label>
 
                 <div
@@ -975,15 +1012,15 @@ function InventarioPage() {
 
                       <div className="location-trigger-text">
                         <strong>
-                          {formulario.ubicacion || "Seleccionar ubicaciÃ³n"}
+                          {formulario.ubicacion || "Seleccionar ubicación"}
                         </strong>
 
                         <span>
                           {ubicacionFormulario
                             ? ubicacionFormulario.tieneSubdivisiones
                               ? "Jaba con subdivisiones internas"
-                              : "Jaba estÃ¡ndar"
-                            : "Selecciona el espacio fÃ­sico del material"}
+                              : "Jaba estándar"
+                            : "Selecciona el espacio físico del material"}
                         </span>
                       </div>
                     </div>
@@ -999,20 +1036,21 @@ function InventarioPage() {
                         <div>
                           <strong>Ubicaciones disponibles</strong>
 
-                          <span>Selecciona una jaba del almacÃ©n</span>
+                          <span>Selecciona una jaba del almacén</span>
                         </div>
 
                         <span className="location-options-count">
-                          {ubicacionesAlmacen.length} espacios
+                          {ubicaciones.length} espacios
                         </span>
                       </div>
 
                       <div className="location-options-list">
-                        {ubicacionesAlmacen.map((ubicacion) => {
+                        {ubicaciones.map((ubicacion) => {
                           const tieneDivisiones = ubicacion.tieneSubdivisiones;
 
                           const seleccionada =
-                            formulario.ubicacion === ubicacion.nombre;
+                            String(formulario.ubicacion) ===
+                            String(ubicacion.id);
 
                           const capacidad =
                             obtenerCapacidadUbicacion(ubicacion);
@@ -1048,9 +1086,9 @@ function InventarioPage() {
 
                                 <span>
                                   Estante {ubicacion.estante}
-                                  {" Â· "}
+                                  {" · "}
                                   Piso {ubicacion.piso}
-                                  {" Â· "}
+                                  {" · "}
                                   Columna {ubicacion.columna}
                                 </span>
                               </div>
@@ -1092,7 +1130,7 @@ function InventarioPage() {
                                       : "badge-standard"
                                   }`}
                                 >
-                                  {tieneDivisiones ? "3 Ã— 2" : "EstÃ¡ndar"}
+                                  {tieneDivisiones ? "3 × 2" : "Estándar"}
                                 </span>
                               </div>
 
@@ -1122,7 +1160,7 @@ function InventarioPage() {
                   )}
                 </div>
 
-                {/* INFORMACIÃ“N DE UBICACIÃ“N SELECCIONADA */}
+                {/* INFORMACIÓN DE UBICACIÓN SELECCIONADA */}
 
                 {ubicacionFormulario && (
                   <div
@@ -1139,27 +1177,27 @@ function InventarioPage() {
                     <div className="location-selected-description">
                       <strong>
                         Estante {ubicacionFormulario.estante}
-                        {" Â· "}
+                        {" · "}
                         {ubicacionFormulario.nombre}
                       </strong>
 
                       <span>
                         Piso {ubicacionFormulario.piso}
-                        {" Â· "}
+                        {" · "}
                         Columna {ubicacionFormulario.columna}
                       </span>
 
                       <p>
                         {ubicacionFormulario.tieneSubdivisiones
-                          ? "Esta jaba dispone de 6 divisiones internas. Selecciona la divisiÃ³n donde guardarÃ¡s el material."
-                          : "Espacio estÃ¡ndar sin subdivisiones internas. El material se asignarÃ¡ directamente a esta ubicaciÃ³n."}
+                          ? `Esta jaba dispone de ${ubicacionFormulario.subdivisiones.length} divisiones internas. Selecciona dónde guardarás el material.`
+                          : "Espacio estándar sin subdivisiones internas. El material se asignará directamente a esta ubicación."}
                       </p>
                     </div>
 
                     <span className="location-selected-badge">
                       {ubicacionFormulario.tieneSubdivisiones
-                        ? "3 Ã— 2"
-                        : "EstÃ¡ndar"}
+                        ? "3 × 2"
+                        : "Estándar"}
                     </span>
                   </div>
                 )}
@@ -1169,7 +1207,7 @@ function InventarioPage() {
 
               {ubicacionFormulario?.tieneSubdivisiones && (
                 <div className="form-group form-full subdivision-selector">
-                  <label>DivisiÃ³n interna *</label>
+                  <label>División interna *</label>
 
                   <div className="custom-subdivision-select">
                     <button
@@ -1186,14 +1224,15 @@ function InventarioPage() {
                     >
                       <div className="subdivision-trigger-content">
                         <strong>
-                          {formulario.subdivision || "Seleccionar divisiÃ³n"}
+                          {formulario.subdivision || "Seleccionar división"}
                         </strong>
 
                         <span>
                           {formulario.subdivision
                             ? ubicacionFormulario.subdivisiones.find(
                                 (division) =>
-                                  division.id === formulario.subdivision,
+                                  String(division.id) ===
+                                  String(formulario.subdivision),
                               )?.nombre
                             : "Selecciona el espacio interno del material"}
                         </span>
@@ -1210,7 +1249,8 @@ function InventarioPage() {
                       >
                         {ubicacionFormulario.subdivisiones.map((division) => {
                           const seleccionada =
-                            formulario.subdivision === division.id;
+                            String(formulario.subdivision) ===
+                            String(division.id);
 
                           const ocupada = divisionEstaOcupada(
                             ubicacionFormulario,
@@ -1252,7 +1292,7 @@ function InventarioPage() {
               {/* OBSERVACIONES */}
 
               <div className="form-group form-full">
-                <label htmlFor="observacion">ObservaciÃ³n</label>
+                <label htmlFor="observacion">Observación</label>
 
                 <textarea
                   id="observacion"
@@ -1260,7 +1300,7 @@ function InventarioPage() {
                   rows="3"
                   value={formulario.observacion}
                   onChange={actualizarCampo}
-                  placeholder="InformaciÃ³n adicional del material..."
+                  placeholder="Información adicional del material..."
                 />
               </div>
 
@@ -1280,7 +1320,7 @@ function InventarioPage() {
                 </button>
 
                 <button type="submit" className="button button-primary">
-                  {registroEditando ? "Guardar cambios" : "Guardar ubicaciÃ³n"}
+                  {registroEditando ? "Guardar cambios" : "Guardar ubicación"}
                 </button>
               </div>
             </form>

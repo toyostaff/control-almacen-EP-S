@@ -19,9 +19,13 @@ import { ubicacionesAlmacen, estantesAlmacen } from "../../data/ubicaciones";
 import { obtenerInventario } from "../../services/inventarioService";
 
 import VoiceAssistant from "../../components/voice/VoiceAssistant";
+
 // =====================================================
-// NORMALIZAR BÃšSQUEDAS
+
+// NORMALIZAR BÚSQUEDAS
+
 // =====================================================
+
 function normalizar(texto) {
   return (texto || "")
 
@@ -35,12 +39,18 @@ function normalizar(texto) {
 
     .trim();
 }
+
 // =====================================================
+
 // COMPONENTE PRINCIPAL
+
 // =====================================================
+
 function UbicacionesPage() {
   const [inventario, setInventario] = useState([]);
+
   const [cargandoInventario, setCargandoInventario] = useState(true);
+
   const [errorInventario, setErrorInventario] = useState("");
 
   const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState(null);
@@ -48,23 +58,35 @@ function UbicacionesPage() {
   const [busqueda, setBusqueda] = useState("");
 
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
-  // UbicaciÃ³n y divisiÃ³n que se deben localizar
+
+  // Ubicación y división que se deben localizar
+
   const [ubicacionResaltada, setUbicacionResaltada] = useState(null);
 
   const [subdivisionResaltada, setSubdivisionResaltada] = useState(null);
-  // Referencias de las jabas fÃ­sicas
+
+  // Referencias de las jabas físicas
+
   const ubicacionesRefs = useRef({});
+
   // ===================================================
+
   // CARGAR INVENTARIO
+
   // ===================================================
+
   // Cargar inventario centralizado desde Railway.
+
   // La vista se actualiza al entrar, al volver a la pestaña y cada 15 segundos.
+
   useEffect(() => {
     let activo = true;
+
     let cargando = false;
 
     async function cargarInventario() {
       if (cargando) return;
+
       cargando = true;
 
       try {
@@ -72,16 +94,18 @@ function UbicacionesPage() {
 
         if (activo) {
           setInventario(Array.isArray(datos) ? datos : []);
+
           setErrorInventario("");
         }
       } catch (error) {
         if (activo) {
           setErrorInventario(
-            error.message || "No se pudo cargar el inventario del servidor."
+            error.message || "No se pudo cargar el inventario del servidor.",
           );
         }
       } finally {
         cargando = false;
+
         if (activo) setCargandoInventario(false);
       }
     }
@@ -91,20 +115,30 @@ function UbicacionesPage() {
     }
 
     cargarInventario();
+
     const intervalo = window.setInterval(cargarInventario, 15000);
+
     window.addEventListener("focus", cargarInventario);
+
     document.addEventListener("visibilitychange", alVolverAPestana);
 
     return () => {
       activo = false;
+
       window.clearInterval(intervalo);
+
       window.removeEventListener("focus", cargarInventario);
+
       document.removeEventListener("visibilitychange", alVolverAPestana);
     };
   }, []);
+
   // ===================================================
-  // AGRUPAR MATERIALES POR UBICACIÃ“N
+
+  // AGRUPAR MATERIALES POR UBICACIÓN
+
   // ===================================================
+
   const ubicacionesConDatos = useMemo(() => {
     return ubicacionesAlmacen.map((ubicacion) => {
       const registros = inventario.filter(
@@ -142,9 +176,13 @@ function UbicacionesPage() {
       };
     });
   }, [inventario]);
+
   // ===================================================
+
   // BUSCADOR GENERAL
+
   // ===================================================
+
   const resultadosBusqueda = useMemo(() => {
     const termino = normalizar(busqueda);
 
@@ -190,15 +228,23 @@ function UbicacionesPage() {
       return prioridadA - prioridadB;
     });
   }, [inventario, busqueda]);
+
   // ===================================================
+
   // UBICACIONES ENCONTRADAS
+
   // ===================================================
+
   const ubicacionesEncontradas = useMemo(() => {
     return new Set(resultadosBusqueda.map((registro) => registro.ubicacion));
   }, [resultadosBusqueda]);
+
   // ===================================================
+
   // DIVISIONES ENCONTRADAS
+
   // ===================================================
+
   const subdivisionesEncontradas = useMemo(() => {
     return new Set(
       resultadosBusqueda
@@ -208,9 +254,13 @@ function UbicacionesPage() {
         .map((registro) => `${registro.ubicacion}|${registro.subdivision}`),
     );
   }, [resultadosBusqueda]);
+
   // ===================================================
+
   // INDICADORES
+
   // ===================================================
+
   const ubicacionesOcupadas = ubicacionesConDatos.filter(
     (ubicacion) => ubicacion.cantidadRegistros > 0,
   ).length;
@@ -226,15 +276,23 @@ function UbicacionesPage() {
     ubicacionesConDatos.length > 0
       ? Math.round((ubicacionesOcupadas / ubicacionesConDatos.length) * 100)
       : 0;
+
   // ===================================================
-  // OBTENER UBICACIÃ“N
+
+  // OBTENER UBICACIÓN
+
   // ===================================================
+
   function obtenerUbicacion(nombre) {
     return ubicacionesConDatos.find((ubicacion) => ubicacion.nombre === nombre);
   }
+
   // ===================================================
+
   // LOCALIZAR REPUESTO EN LOS ESTANTES
+
   // ===================================================
+
   function localizarRepuesto(registro) {
     if (!registro?.ubicacion) return;
 
@@ -245,30 +303,45 @@ function UbicacionesPage() {
     setUbicacionResaltada(registro.ubicacion);
 
     setSubdivisionResaltada(registro.subdivision || null);
+
     // Cerrar cualquier detalle abierto
+
     setUbicacionSeleccionada(null);
-    // Mantener el resultado seleccionado mientras se localiza// La ubicaciÃ³n se desplazarÃ¡ automÃ¡ticamente mediante useEffect
+
+    // Mantener el resultado seleccionado mientras se localiza.
+    // La ubicación se desplazará automáticamente mediante useEffect.
   }
+
   // ===================================================
+
   // RESULTADO DEL ASISTENTE DE VOZ
+
   // ===================================================
+
   function manejarResultadoVoz(resultado) {
     if (resultado?.encontrado && resultado.registro) {
-      // Localizar automÃ¡ticamente el repuesto encontrado.
+      // Localizar automáticamente el repuesto encontrado.
+
       localizarRepuesto(resultado.registro);
 
       return;
     }
+
     // Limpiar resaltados anteriores si no se encuentra.
+
     setUbicacionResaltada(null);
 
     setSubdivisionResaltada(null);
 
     setUbicacionSeleccionada(null);
   }
+
   // ===================================================
-  // DESPLAZAMIENTO AUTOMÃTICO HACIA LA JABA
+
+  // DESPLAZAMIENTO AUTOMÁTICO HACIA LA JABA
+
   // ===================================================
+
   useEffect(() => {
     if (!ubicacionResaltada) return;
 
@@ -288,9 +361,13 @@ function UbicacionesPage() {
 
     return () => clearTimeout(temporizador);
   }, [ubicacionResaltada]);
+
   // ===================================================
+
   // ABRIR Y CERRAR JABA
+
   // ===================================================
+
   function abrirUbicacion(ubicacion) {
     if (!ubicacion) return;
 
@@ -300,9 +377,13 @@ function UbicacionesPage() {
   function cerrarUbicacion() {
     setUbicacionSeleccionada(null);
   }
+
   // ===================================================
-  // DISTRIBUCIÃ“N DE LOS PISOS
+
+  // DISTRIBUCIÓN DE LOS PISOS
+
   // ===================================================
+
   function obtenerPiso(estante, piso) {
     return ubicacionesConDatos
 
@@ -312,14 +393,19 @@ function UbicacionesPage() {
 
       .sort((a, b) => a.columna - b.columna);
   }
+
   // ===================================================
+
   // INTERFAZ
+
   // ===================================================
+
   return (
     <section className="ubicaciones-page">
       {errorInventario && (
         <div className="form-error" role="alert">
           {errorInventario}
+
           <button type="button" onClick={() => window.location.reload()}>
             Reintentar
           </button>
@@ -336,17 +422,15 @@ function UbicacionesPage() {
 
       <div className="page-heading locations-page-heading">
         <div>
-          <span className="page-eyebrow">DISTRIBUCIÃ“N FÃSICA</span>
+          <span className="page-eyebrow">DISTRIBUCIÓN FÍSICA</span>
 
           <h1>Ubicaciones</h1>
 
           <p>
-            Visualiza y localiza el repuesto dentro de las estanterÃ­as del
-            Ã¡rea de motores
+            Visualiza y localiza el repuesto dentro de las estanterías del área
+            de motores
           </p>
         </div>
-
-
       </div>
 
       {/* BUSCADOR GENERAL */}
@@ -359,7 +443,7 @@ function UbicacionesPage() {
             type="search"
             value={busqueda}
             onChange={(event) => setBusqueda(event.target.value)}
-            placeholder="Buscar repuesto, SKU o cÃ³digo..."
+            placeholder="Buscar repuesto, SKU o código..."
           />
 
           {busqueda && (
@@ -372,7 +456,7 @@ function UbicacionesPage() {
 
                 setSubdivisionResaltada(null);
               }}
-              aria-label="Limpiar bÃºsqueda"
+              aria-label="Limpiar búsqueda"
             >
               <X size={19} />
             </button>
@@ -391,14 +475,14 @@ function UbicacionesPage() {
 
                 <span>
                   {resultadosBusqueda.length} resultado(s) encontrado(s).
-                  Selecciona un repuesto para localizarlo en el almacÃ©n.
+                  Selecciona un repuesto para localizarlo en el almacén.
                 </span>
               </>
             ) : (
               <>
                 <Search size={18} />
 
-                <span>No se encontraron componentes con Â«{busqueda}Â».</span>
+                <span>No se encontraron componentes con «{busqueda}».</span>
               </>
             )}
           </div>
@@ -424,16 +508,16 @@ function UbicacionesPage() {
                   <small>
                     {registro.sku || "Sin SKU"}
 
-                    {" Â· "}
+                    {" · "}
 
-                    {registro.codigo || "Sin cÃ³digo"}
+                    {registro.codigo || "Sin código"}
                   </small>
                 </div>
 
                 <span className="warehouse-search-result-location">
                   {registro.ubicacion}
 
-                  {registro.subdivision ? ` Â· ${registro.subdivision}` : ""}
+                  {registro.subdivision ? ` · ${registro.subdivision}` : ""}
                 </span>
 
                 <ArrowUpRight size={17} />
@@ -442,6 +526,7 @@ function UbicacionesPage() {
           </div>
         )}
       </div>
+
       {/* INDICADORES */}
 
       <div className="locations-summary">
@@ -502,14 +587,14 @@ function UbicacionesPage() {
         </article>
       </div>
 
-      {/* DISTRIBUCIÃ“N DEL ALMACÃ‰N */}
+      {/* DISTRIBUCIÓN DEL ALMACÉN */}
 
       <div className="warehouse-visual-card">
         <div className="warehouse-visual-header">
           <div>
             <span className="page-eyebrow">VISTA GENERAL</span>
 
-            <h2>DistribuciÃ³n del almacÃ©n</h2>
+            <h2>Distribución del almacén</h2>
 
             <p>
               Selecciona un compartimento para consultar sus componentes y
@@ -519,7 +604,7 @@ function UbicacionesPage() {
 
           <div className="warehouse-capacity">
             <div className="warehouse-capacity-top">
-              <span>OcupaciÃ³n</span>
+              <span>Ocupación</span>
 
               <strong>{porcentajeOcupacion}%</strong>
             </div>
@@ -557,7 +642,7 @@ function UbicacionesPage() {
           <div>
             <span className="legend-square found" />
 
-            <span>Resultado de bÃºsqueda</span>
+            <span>Resultado de búsqueda</span>
           </div>
 
           <span className="warehouse-legend-note">
@@ -579,7 +664,7 @@ function UbicacionesPage() {
 
             return (
               <article className="warehouse-rack" key={estante.codigo}>
-                {/* IDENTIFICACIÃ“N DEL ESTANTE */}
+                {/* IDENTIFICACIÓN DEL ESTANTE */}
 
                 <div className="rack-identification">
                   <div className="rack-identification-icon">
@@ -591,7 +676,7 @@ function UbicacionesPage() {
 
                     <h3>{estante.nombre}</h3>
 
-                    <small>4 pisos Â· 3 columnas</small>
+                    <small>4 pisos · 3 columnas</small>
                   </div>
 
                   <div className="rack-identification-count">
@@ -601,7 +686,7 @@ function UbicacionesPage() {
                   </div>
                 </div>
 
-                {/* ESTRUCTURA METÃLICA */}
+                {/* ESTRUCTURA METÁLICA */}
 
                 <div className="rack-frame">
                   <div className="rack-top-beam">
@@ -709,7 +794,7 @@ function UbicacionesPage() {
                                       </small>
                                     )}
 
-                                    {/* DIVISIÃ“N EXACTA ENCONTRADA */}
+                                    {/* DIVISIÓN EXACTA ENCONTRADA */}
 
                                     {divisionDestino && (
                                       <span className="rack-bin-target-division">
@@ -757,8 +842,8 @@ function UbicacionesPage() {
           <MapPinned size={17} />
 
           <span>
-            Cada jaba tiene un cÃ³digo Ãºnico para facilitar la identificaciÃ³n
-            fÃ­sica.
+            Cada jaba tiene un código único para facilitar la identificación
+            física.
           </span>
         </div>
       </div>
@@ -786,9 +871,9 @@ function UbicacionesPage() {
               <div>
                 <span className="page-eyebrow">
                   ESTANTE {ubicacionSeleccionada.estante}
-                  {" Â· "}
+                  {" · "}
                   PISO {String(ubicacionSeleccionada.piso).padStart(2, "0")}
-                  {" Â· "}
+                  {" · "}
                   COLUMNA {ubicacionSeleccionada.columna}
                 </span>
 
@@ -796,7 +881,7 @@ function UbicacionesPage() {
                   {ubicacionSeleccionada.nombre}
                 </h2>
 
-                <p>Componentes y distribuciÃ³n interna del compartimento.</p>
+                <p>Componentes y distribución interna del compartimento.</p>
               </div>
 
               <button
@@ -817,7 +902,7 @@ function UbicacionesPage() {
                   <CircleDot size={17} />
 
                   <span>
-                    UbicaciÃ³n ocupada Â·{" "}
+                    Ubicación ocupada ·{" "}
                     {ubicacionSeleccionada.cantidadRegistros} componente(s)
                   </span>
                 </>
@@ -825,7 +910,7 @@ function UbicacionesPage() {
                 <>
                   <CheckCircle2 size={17} />
 
-                  <span>UbicaciÃ³n disponible</span>
+                  <span>Ubicación disponible</span>
                 </>
               )}
             </div>
@@ -836,9 +921,9 @@ function UbicacionesPage() {
               <div className="location-divisions-section">
                 <div className="location-divisions-heading">
                   <div>
-                    <h3>DistribuciÃ³n interna</h3>
+                    <h3>Distribución interna</h3>
 
-                    <p>OrganizaciÃ³n de la jaba Â· 3 columnas Ã— 2 filas</p>
+                    <p>Organización de la jaba · 3 columnas Á— 2 filas</p>
                   </div>
 
                   <span>
@@ -906,7 +991,7 @@ function UbicacionesPage() {
                   (registro) => !registro.subdivision,
                 ) && (
                   <p className="division-unassigned-warning">
-                    Hay componentes sin divisiÃ³n asignada. Edita su asociaciÃ³n
+                    Hay componentes sin división asignada. Edita su asociación
                     en Inventario para ubicarlos correctamente.
                   </p>
                 )}
@@ -920,7 +1005,7 @@ function UbicacionesPage() {
                 <div>
                   <h3>Componentes almacenados</h3>
 
-                  <p>Repuestos registrados en esta ubicaciÃ³n.</p>
+                  <p>Repuestos registrados en esta ubicación.</p>
                 </div>
 
                 <span>
@@ -942,12 +1027,14 @@ function UbicacionesPage() {
                           onClick={() =>
                             setFotoAmpliada({
                               src: registro.foto,
+
                               nombre: registro.descripcion,
                             })
                           }
-                          aria-label={`Ampliar fotografÃ­a de ${registro.descripcion}`}
+                          aria-label={`Ampliar fotografía de ${registro.descripcion}`}
                         >
                           <img src={registro.foto} alt={registro.descripcion} />
+
                           <span>
                             <Search size={15} />
                           </span>
@@ -965,27 +1052,27 @@ function UbicacionesPage() {
 
                         {registro.codigo && (
                           <small>
-                            CÃ³digo: <strong>{registro.codigo}</strong>
+                            Código: <strong>{registro.codigo}</strong>
                           </small>
                         )}
 
                         {registro.codigoReemplazo && (
                           <small>
-                            CÃ³digo de reemplazo:{" "}
+                            Código de reemplazo:{" "}
                             <strong>{registro.codigoReemplazo}</strong>
                           </small>
                         )}
 
                         {registro.subdivision && (
                           <div className="location-product-exact">
-                            <span>DIVISIÃ“N EXACTA</span>
+                            <span>DIVISIÓN EXACTA</span>
 
                             <strong>{registro.subdivision}</strong>
                           </div>
                         )}
 
                         {registro.observacion && (
-                          <small>ObservaciÃ³n: {registro.observacion}</small>
+                          <small>Observación: {registro.observacion}</small>
                         )}
                       </div>
 
@@ -999,7 +1086,7 @@ function UbicacionesPage() {
                     <strong>Compartimento disponible</strong>
 
                     <span>
-                      TodavÃ­a no hay componentes registrados en{" "}
+                      Todavía no hay componentes registrados en{" "}
                       {ubicacionSeleccionada.nombre}.
                     </span>
                   </div>
@@ -1022,7 +1109,7 @@ function UbicacionesPage() {
         </div>
       )}
 
-      {/* VISUALIZADOR DE FOTOGRAFÃA */}
+      {/* VISUALIZADOR DE FOTOGRAFÁA */}
 
       {fotoAmpliada && (
         <div
@@ -1037,18 +1124,19 @@ function UbicacionesPage() {
             className="location-photo-modal"
             role="dialog"
             aria-modal="true"
-            aria-label="FotografÃ­a del repuesto"
+            aria-label="Fotografía del repuesto"
           >
             <div className="location-photo-header">
               <div>
                 <strong>{fotoAmpliada.nombre}</strong>
-                <small>FotografÃ­a del componente</small>
+
+                <small>Fotografía del componente</small>
               </div>
 
               <button
                 type="button"
                 onClick={() => setFotoAmpliada(null)}
-                aria-label="Cerrar fotografÃ­a"
+                aria-label="Cerrar fotografía"
               >
                 <X size={21} />
               </button>
