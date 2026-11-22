@@ -1,20 +1,45 @@
 
 /* =========================================
-   HISTORIAL
+   HISTORIAL - ESTILOS PRINCIPALES
+========================================= */
+
+.historial-page {
+  width: 100%;
+  min-width: 0;
+}
+
+/* =========================================
+   ACCIONES DEL ENCABEZADO
+========================================= */
+
+.history-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* =========================================
+   FILTROS Y BÚSQUEDA
 ========================================= */
 
 .history-filters {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+  min-width: 0;
 }
 
 .history-filters > select {
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 42px;
+  padding: 0 35px 0 13px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: white;
+  background: #ffffff;
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .history-filters > select:focus {
@@ -22,29 +47,172 @@
   border-color: var(--color-primary);
 }
 
-/* TABLA Y FECHAS */
+/* =========================================
+   BARRA DE BÚSQUEDA
+========================================= */
 
-.history-table {
-  width: 100%;
+.historial-page .search-box {
+  min-width: 260px;
+  max-width: 340px;
 }
 
-.history-date {
+.historial-page .search-box input {
+  width: 100%;
+  min-width: 0;
+}
+
+/* =========================================
+   TABLA
+========================================= */
+
+.historial-page .table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.historial-page .data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.historial-page .data-table th {
+  white-space: nowrap;
+  padding: 15px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  background: #f8fafc;
+  text-align: left;
+}
+
+.historial-page .data-table td {
+  padding: 14px 16px;
+  vertical-align: middle;
+}
+
+.historial-page .data-table tbody tr {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.historial-page .data-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* =========================================
+   ESTADO VACÍO Y CARGA
+========================================= */
+
+.history-empty {
+  min-height: 190px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 20px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.history-empty > svg {
+  color: #858585;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.history-empty strong {
+  display: block;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.history-empty span {
+  display: block;
+  max-width: 360px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* =========================================
+   PIE DE TABLA
+========================================= */
+
+.history-table-footer {
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--color-border);
+  background: #ffffff;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.history-table-footer > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-table-footer > div svg {
+  flex-shrink: 0;
+  color: #858585;
+}
+
+.history-table-footer > span {
   color: var(--color-text-secondary);
   font-size: 11px;
 }
 
-.history-description {
-  max-width: 350px;
-  white-space: normal !important;
-  line-height: 1.5;
+/* =========================================
+   FECHA Y HORA
+========================================= */
+
+.history-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
 }
 
-/* MÓDULOS Y ACCIONES */
+.history-date svg {
+  flex-shrink: 0;
+}
+
+/* =========================================
+   DESCRIPCIÓN
+========================================= */
+
+.history-description {
+  display: block;
+  max-width: 350px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+  font-size: 12px;
+}
+
+/* =========================================
+   MÓDULOS Y ACCIONES
+========================================= */
 
 .history-module {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 12px;
 }
 
 .history-module-icon {
@@ -58,9 +226,169 @@
 
 .history-action {
   display: inline-flex;
-  padding: 5px 8px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
   border-radius: 6px;
-  background: #f1f5f9;
   font-size: 10px;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.history-action-created {
+  background: #ecfdf3;
+  color: #15803d;
+}
+
+.history-action-edited {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.history-action-activated {
+  background: #ecfdf3;
+  color: #15803d;
+}
+
+.history-action-disabled {
+  background: #fff1f2;
+  color: #dc2626;
+}
+
+.history-action-default {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* =========================================
+   USUARIO
+========================================= */
+
+.history-user {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.history-user svg {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+/* =========================================
+   MENSAJES
+========================================= */
+
+.history-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 15px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.history-alert-error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.history-alert-success {
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.history-alert button {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* =========================================
+   ANIMACIÓN DE ACTUALIZACIÓN
+========================================= */
+
+.history-spinning {
+  animation: history-spin 1s linear infinite;
+}
+
+@keyframes history-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================
+   RESPONSIVE - TABLETS
+========================================= */
+
+@media (max-width: 900px) {
+  .history-filters {
+    width: 100%;
+  }
+
+  .historial-page .search-box {
+    flex: 1;
+    max-width: none;
+  }
+
+  .history-description {
+    max-width: 250px;
+  }
+}
+
+/* =========================================
+   RESPONSIVE - CELULARES
+========================================= */
+
+@media (max-width: 600px) {
+  .history-header-actions {
+    width: 100%;
+  }
+
+  .history-header-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .history-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .historial-page .search-box {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .history-filters > select {
+    width: 100%;
+  }
+
+  .history-empty {
+    min-height: 170px;
+    padding: 25px 15px;
+  }
+
+  .history-table-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 13px 15px;
+  }
+
+  .history-description {
+    max-width: 200px;
+  }
+
+  .historial-page .data-table th,
+  .historial-page .data-table td {
+    padding: 12px;
+  }
 }
