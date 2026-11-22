@@ -9,3 +9,40 @@
 @import "./modules/ubicaciones.css";
 @import "./modules/historial.css";
 @import "./modules/voz.css";
+
+
+/* CERRAR SESIÓN */
+
+.header-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 13px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #555555;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.header-logout:hover {
+  background: #fff0f0;
+  color: #d71920;
+  border-color: #d71920;
+}
+
+@media (max-width: 600px) {
+  .header-logout {
+    padding: 9px;
+  }
+
+  .header-logout span {
+    display: none;
+  }
+}
+
+
