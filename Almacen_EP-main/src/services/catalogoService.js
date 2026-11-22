@@ -1,112 +1,42 @@
-import { catalogoInicial } from "../data/catalogoSeed";
-import { registrarEvento } from "./historialService";
 
-const STORAGE_KEY = "almacen_catalogo";
+import { apiFetch } from "./api";
 
-function usuarioActual() {
-  return localStorage.getItem("almacen_perfil") === "almacen"
-    ? "Personal de almacén"
-    : "Administrador";
+// =========================================
+// CONSULTAR CATÁLOGO MAESTRO
+// =========================================
+
+export async function obtenerCatalogo() {
+  return await apiFetch("/api/catalogo");
 }
 
-function guardarCatalogo(catalogo) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(catalogo));
-}
+// =========================================
+// CREAR MATERIAL
+// =========================================
 
-export function obtenerCatalogo() {
-  const almacenado = localStorage.getItem(STORAGE_KEY);
-  if (!almacenado) {
-    guardarCatalogo(catalogoInicial);
-    return catalogoInicial;
-  }
-  try {
-    return JSON.parse(almacenado);
-  } catch {
-    guardarCatalogo(catalogoInicial);
-    return catalogoInicial;
-  }
-}
-
-function obtenerSiguienteSku(catalogo) {
-  const numeros = catalogo.map((item) => {
-    const numero = Number(item.sku?.replace("SKU-", ""));
-    return Number.isNaN(numero) ? 0 : numero;
+export async function crearMaterial(descripcion) {
+  return await apiFetch("/api/catalogo", {
+    method: "POST",
+    body: JSON.stringify({ descripcion }),
   });
-  const mayor = numeros.length > 0 ? Math.max(...numeros) : 0;
-  return `SKU-${String(mayor + 1).padStart(4, "0")}`;
 }
 
-export function crearMaterial(descripcion) {
-  const catalogo = obtenerCatalogo();
-  const descripcionLimpia = descripcion.trim();
-  if (!descripcionLimpia) throw new Error("La descripción es obligatoria.");
+// =========================================
+// EDITAR MATERIAL
+// =========================================
 
-  const duplicado = catalogo.some(
-    (item) => item.descripcion.trim().toLowerCase() === descripcionLimpia.toLowerCase(),
-  );
-  if (duplicado) throw new Error("Ya existe un material con esta descripción.");
-
-  const nuevoMaterial = {
-    id: Date.now(),
-    sku: obtenerSiguienteSku(catalogo),
-    descripcion: descripcionLimpia,
-    fechaCreacion: new Date().toISOString().split("T")[0],
-    estado: "Activo",
-  };
-  guardarCatalogo([...catalogo, nuevoMaterial]);
-  registrarEvento({
-    modulo: "Catálogo Maestro",
-    accion: "Creación",
-    descripcion: `Se creó el material ${nuevoMaterial.descripcion}.`,
-    referencia: nuevoMaterial.sku,
-    usuario: usuarioActual(),
+export async function editarMaterial(id, descripcion) {
+  return await apiFetch(`/api/catalogo/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ descripcion }),
   });
-  return nuevoMaterial;
 }
 
-export function editarMaterial(id, descripcion) {
-  const catalogo = obtenerCatalogo();
-  const descripcionLimpia = descripcion.trim();
-  if (!descripcionLimpia) throw new Error("La descripción es obligatoria.");
+// =========================================
+// ACTIVAR / DESACTIVAR MATERIAL
+// =========================================
 
-  const existente = catalogo.find((item) => item.id === id);
-  if (!existente) throw new Error("No se encontró el material.");
-
-  const duplicado = catalogo.some(
-    (item) => item.id !== id && item.descripcion.trim().toLowerCase() === descripcionLimpia.toLowerCase(),
-  );
-  if (duplicado) throw new Error("Ya existe otro material con esta descripción.");
-
-  const actualizado = catalogo.map((item) =>
-    item.id === id ? { ...item, descripcion: descripcionLimpia } : item,
-  );
-  guardarCatalogo(actualizado);
-  registrarEvento({
-    modulo: "Catálogo Maestro",
-    accion: "Edición",
-    descripcion: `Se modificó el material ${existente.descripcion} por ${descripcionLimpia}.`,
-    referencia: existente.sku,
-    usuario: usuarioActual(),
+export async function cambiarEstadoMaterial(id) {
+  return await apiFetch(`/api/catalogo/${id}/estado`, {
+    method: "PATCH",
   });
-  return actualizado;
-}
-
-export function cambiarEstadoMaterial(id) {
-  const catalogo = obtenerCatalogo();
-  const existente = catalogo.find((item) => item.id === id);
-  if (!existente) throw new Error("No se encontró el material.");
-
-  const nuevoEstado = existente.estado === "Activo" ? "Inactivo" : "Activo";
-  const actualizado = catalogo.map((item) =>
-    item.id === id ? { ...item, estado: nuevoEstado } : item,
-  );
-  guardarCatalogo(actualizado);
-  registrarEvento({
-    modulo: "Catálogo Maestro",
-    accion: nuevoEstado === "Activo" ? "Activación" : "Desactivación",
-    descripcion: `Se ${nuevoEstado === "Activo" ? "activó" : "desactivó"} el material ${existente.descripcion}.`,
-    referencia: existente.sku,
-    usuario: usuarioActual(),
-  });
-  return actualizado;
 }

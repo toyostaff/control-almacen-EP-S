@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -68,15 +67,27 @@ function InventarioPage() {
   const galeriaInputRef = useRef(null);
   const camaraInputRef = useRef(null);
 
-  // CARGA INICIAL
+  // CARGA DE DATOS DESDE RAILWAY
+  async function cargarDatos() {
+    try {
+      const [registros, materiales] = await Promise.all([
+        obtenerInventario(),
+        obtenerCatalogo(),
+      ]);
+
+      setInventario(Array.isArray(registros) ? registros : []);
+      setCatalogo(
+        (Array.isArray(materiales) ? materiales : []).filter(
+          (material) => material.estado === "Activo",
+        ),
+      );
+    } catch (err) {
+      setError(err.message || "No se pudieron cargar los datos del almacén.");
+    }
+  }
+
   useEffect(() => {
-    setInventario(obtenerInventario() || []);
-
-    const materiales = obtenerCatalogo() || [];
-
-    setCatalogo(
-      materiales.filter((material) => material.estado === "Activo")
-    );
+    cargarDatos();
   }, []);
 
   // BUSCADOR DE INVENTARIO
@@ -93,7 +104,7 @@ function InventarioPage() {
         registro.codigoReemplazo,
         registro.ubicacion,
         registro.subdivision,
-      ].some((valor) => normalizarTexto(valor).includes(termino))
+      ].some((valor) => normalizarTexto(valor).includes(termino)),
     );
   }, [inventario, busqueda]);
 
@@ -108,30 +119,27 @@ function InventarioPage() {
         const descripcion = normalizarTexto(material.descripcion);
         const sku = normalizarTexto(material.sku);
 
-        return (
-          descripcion.startsWith(termino) ||
-          sku.startsWith(termino)
-        );
+        return descripcion.startsWith(termino) || sku.startsWith(termino);
       })
       .sort((a, b) =>
         normalizarTexto(a.descripcion).localeCompare(
           normalizarTexto(b.descripcion),
-          "es"
-        )
+          "es",
+        ),
       )
       .slice(0, 8);
   }, [catalogo, busquedaMaterial]);
 
   const totalActivos = inventario.filter(
-    (registro) => registro.estado === "Activo"
+    (registro) => registro.estado === "Activo",
   ).length;
 
   const totalInactivos = inventario.filter(
-    (registro) => registro.estado === "Inactivo"
+    (registro) => registro.estado === "Inactivo",
   ).length;
 
   const ubicacionFormulario = ubicacionesAlmacen.find(
-    (ubicacion) => ubicacion.nombre === formulario.ubicacion
+    (ubicacion) => ubicacion.nombre === formulario.ubicacion,
   );
 
   // ==========================================
@@ -143,7 +151,7 @@ function InventarioPage() {
       (registro) =>
         registro.estado === "Activo" &&
         registro.ubicacion === ubicacion.nombre &&
-        registro.id !== registroEditando?.id
+        registro.id !== registroEditando?.id,
     );
   }
 
@@ -178,7 +186,7 @@ function InventarioPage() {
         registro.estado === "Activo" &&
         registro.ubicacion === ubicacion.nombre &&
         registro.subdivision === divisionId &&
-        registro.id !== registroEditando?.id
+        registro.id !== registroEditando?.id,
     );
   }
 
@@ -210,9 +218,7 @@ function InventarioPage() {
       descripcion: registro.descripcion,
       tieneCodigo,
       codigo: registro.codigo || "",
-      codigoReemplazo: tieneCodigo
-        ? registro.codigoReemplazo || ""
-        : "",
+      codigoReemplazo: tieneCodigo ? registro.codigoReemplazo || "" : "",
       ubicacion: registro.ubicacion,
       subdivision: registro.subdivision || "",
       observacion: registro.observacion || "",
@@ -249,7 +255,7 @@ function InventarioPage() {
   }
 
   // ==========================================
-  // ACTUALIZACIÓN DE CAMPOS
+  // ACTUALIZACIÃ“N DE CAMPOS
   // ==========================================
 
   function actualizarCampo(event) {
@@ -276,7 +282,7 @@ function InventarioPage() {
   }
 
   // ==========================================
-  // SELECCIÓN DE MATERIAL
+  // SELECCIÃ“N DE MATERIAL
   // ==========================================
 
   function seleccionarMaterial(material) {
@@ -307,16 +313,14 @@ function InventarioPage() {
   }
 
   // ==========================================
-  // SELECCIÓN DE UBICACIONES
+  // SELECCIÃ“N DE UBICACIONES
   // ==========================================
 
   function seleccionarUbicacion(ubicacion) {
     const capacidad = obtenerCapacidadUbicacion(ubicacion);
 
     if (capacidad.completa) {
-      setError(
-        "Esta ubicación está completa. Selecciona otra."
-      );
+      setError("Esta ubicaciÃ³n estÃ¡ completa. Selecciona otra.");
       return;
     }
 
@@ -333,7 +337,7 @@ function InventarioPage() {
 
   function seleccionarSubdivision(division) {
     if (divisionEstaOcupada(ubicacionFormulario, division.id)) {
-      setError("Esta división ya está ocupada. Selecciona otra.");
+      setError("Esta divisiÃ³n ya estÃ¡ ocupada. Selecciona otra.");
       return;
     }
 
@@ -347,7 +351,7 @@ function InventarioPage() {
   }
 
   // ==========================================
-  // FOTOGRAFÍAS
+  // FOTOGRAFÃAS
   // ==========================================
 
   function cambiarFotografia(event) {
@@ -355,11 +359,7 @@ function InventarioPage() {
 
     if (!archivo) return;
 
-    const formatosPermitidos = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ];
+    const formatosPermitidos = ["image/jpeg", "image/png", "image/webp"];
 
     if (!formatosPermitidos.includes(archivo.type)) {
       setError("Selecciona una imagen JPG, PNG o WEBP.");
@@ -368,7 +368,7 @@ function InventarioPage() {
     }
 
     if (archivo.size > 2 * 1024 * 1024) {
-      setError("La fotografía no debe superar los 2 MB.");
+      setError("La fotografÃ­a no debe superar los 2 MB.");
       event.target.value = "";
       return;
     }
@@ -385,7 +385,7 @@ function InventarioPage() {
     };
 
     lector.onerror = () => {
-      setError("No se pudo leer la fotografía.");
+      setError("No se pudo leer la fotografÃ­a.");
     };
 
     lector.readAsDataURL(archivo);
@@ -408,126 +408,91 @@ function InventarioPage() {
   }
 
   // ==========================================
-  // VALIDACIÓN Y GUARDADO
+  // VALIDACIÃ“N Y GUARDADO
   // ==========================================
 
-  function guardarRegistro(event) {
+  async function guardarRegistro(event) {
     event.preventDefault();
     setError("");
 
     try {
       if (!formulario.skuId) {
-        throw new Error(
-          "Debes seleccionar un material del Catálogo Maestro."
-        );
+        throw new Error("Debes seleccionar un material del CatÃ¡logo Maestro.");
       }
 
       if (!formulario.ubicacion) {
-        throw new Error("Debes seleccionar una ubicación.");
+        throw new Error("Debes seleccionar una ubicaciÃ³n.");
       }
 
       const ubicacionSeleccionada = ubicacionesAlmacen.find(
-        (ubicacion) =>
-          ubicacion.nombre === formulario.ubicacion
+        (ubicacion) => ubicacion.nombre === formulario.ubicacion,
       );
 
       if (!ubicacionSeleccionada) {
-        throw new Error("La ubicación seleccionada no existe.");
+        throw new Error("La ubicaciÃ³n seleccionada no existe.");
       }
 
       // VALIDAR CAPACIDAD
-      const capacidad = obtenerCapacidadUbicacion(
-        ubicacionSeleccionada
-      );
+      const capacidad = obtenerCapacidadUbicacion(ubicacionSeleccionada);
 
       if (capacidad.completa) {
-        throw new Error(
-          "Esta ubicación ya está completa. Selecciona otra."
-        );
+        throw new Error("Esta ubicaciÃ³n ya estÃ¡ completa. Selecciona otra.");
       }
 
       // VALIDAR DIVISIONES
       if (ubicacionSeleccionada.tieneSubdivisiones) {
         if (!formulario.subdivision) {
-          throw new Error(
-            "Debes seleccionar una división interna."
-          );
+          throw new Error("Debes seleccionar una divisiÃ³n interna.");
         }
 
-        const divisionExiste =
-          ubicacionSeleccionada.subdivisiones?.some(
-            (division) =>
-              division.id === formulario.subdivision
-          );
+        const divisionExiste = ubicacionSeleccionada.subdivisiones?.some(
+          (division) => division.id === formulario.subdivision,
+        );
 
         if (!divisionExiste) {
-          throw new Error(
-            "La división seleccionada no es válida."
-          );
+          throw new Error("La divisiÃ³n seleccionada no es vÃ¡lida.");
         }
 
         if (
-          divisionEstaOcupada(
-            ubicacionSeleccionada,
-            formulario.subdivision
-          )
+          divisionEstaOcupada(ubicacionSeleccionada, formulario.subdivision)
         ) {
-          throw new Error(
-            "Esta división ya está ocupada. Selecciona otra."
-          );
+          throw new Error("Esta divisiÃ³n ya estÃ¡ ocupada. Selecciona otra.");
         }
       } else {
-        // UNA SOLA PLAZA PARA UBICACIONES ESTÁNDAR
+        // UNA SOLA PLAZA PARA UBICACIONES ESTÃNDAR
         if (capacidad.ocupados >= 1) {
-          throw new Error(
-            "Esta ubicación ya está ocupada."
-          );
+          throw new Error("Esta ubicaciÃ³n ya estÃ¡ ocupada.");
         }
 
-        // Las ubicaciones estándar no utilizan subdivisiones.
+        // Las ubicaciones estÃ¡ndar no utilizan subdivisiones.
         if (formulario.subdivision) {
-          throw new Error(
-            "Esta ubicación no dispone de divisiones internas."
-          );
+          throw new Error("Esta ubicaciÃ³n no dispone de divisiones internas.");
         }
       }
 
-      if (
-        formulario.tieneCodigo &&
-        !formulario.codigo.trim()
-      ) {
-        throw new Error(
-          "Debes ingresar el código del repuesto."
-        );
+      if (formulario.tieneCodigo && !formulario.codigo.trim()) {
+        throw new Error("Debes ingresar el cÃ³digo del repuesto.");
       }
 
       const datos = {
         ...formulario,
-        codigo: formulario.tieneCodigo
-          ? formulario.codigo.trim()
-          : "",
+        codigo: formulario.tieneCodigo ? formulario.codigo.trim() : "",
         codigoReemplazo: formulario.tieneCodigo
           ? formulario.codigoReemplazo.trim()
           : "",
       };
 
       if (registroEditando) {
-        const actualizado = editarRegistroInventario(
-          registroEditando.id,
-          datos
-        );
-
-        setInventario(actualizado);
+        await editarRegistroInventario(registroEditando.id, datos);
       } else {
-        crearRegistroInventario(datos);
-        setInventario(obtenerInventario());
+        await crearRegistroInventario(datos);
       }
 
+      // Consultar nuevamente los datos confirmados por Railway.
+      await cargarDatos();
       cerrarModal();
     } catch (err) {
-      setError(
-        err.message || "No se pudo guardar el registro."
-      );
+      setError(err.message || "No se pudo guardar el registro.");
     }
   }
 
@@ -535,12 +500,15 @@ function InventarioPage() {
   // ACTIVAR / DESACTIVAR REGISTRO
   // ==========================================
 
-  function cambiarEstado(id) {
+  async function cambiarEstado(id) {
     try {
-      const actualizado = cambiarEstadoRegistro(id);
-      setInventario(actualizado);
+      setError("");
+      await cambiarEstadoRegistro(id);
+      await cargarDatos();
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.message || "No se pudo actualizar el estado del repuesto.",
+      );
     }
   }
 
@@ -550,20 +518,17 @@ function InventarioPage() {
 
   return (
     <section className="inventario-page">
-
       {/* ENCABEZADO */}
 
       <div className="page-heading">
         <div>
-          <span className="page-eyebrow">
-            CONTROL OPERATIVO
-          </span>
+          <span className="page-eyebrow">CONTROL OPERATIVO</span>
 
           <h1>Inventario</h1>
 
           <p>
-            Asocia los códigos utilizados en almacén con los materiales
-            registrados en el Catálogo Maestro.
+            Asocia los cÃ³digos utilizados en almacÃ©n con los materiales
+            registrados en el CatÃ¡logo Maestro.
           </p>
         </div>
 
@@ -573,14 +538,13 @@ function InventarioPage() {
           onClick={abrirNuevoRegistro}
         >
           <Plus size={19} />
-          Nueva asociación
+          Nueva asociaciÃ³n
         </button>
       </div>
 
       {/* RESUMEN */}
 
       <div className="summary-grid">
-
         <article className="summary-card">
           <span>Asociaciones</span>
           <strong>{inventario.length}</strong>
@@ -598,19 +562,15 @@ function InventarioPage() {
           <strong>{totalInactivos}</strong>
           <small>Registros deshabilitados</small>
         </article>
-
       </div>
 
       {/* TABLA DE INVENTARIO */}
 
       <div className="content-card">
-
         <div className="table-toolbar">
           <div>
             <h2>Inventario registrado</h2>
-            <p>
-              Identificación de materiales y su ubicación física.
-            </p>
+            <p>IdentificaciÃ³n de materiales y su ubicaciÃ³n fÃ­sica.</p>
           </div>
 
           <div className="search-box">
@@ -618,25 +578,22 @@ function InventarioPage() {
 
             <input
               type="search"
-              placeholder="Buscar material, SKU, código o ubicación..."
+              placeholder="Buscar material, SKU, cÃ³digo o ubicaciÃ³n..."
               value={busqueda}
-              onChange={(event) =>
-                setBusqueda(event.target.value)
-              }
+              onChange={(event) => setBusqueda(event.target.value)}
             />
           </div>
         </div>
 
         <div className="table-wrapper">
           <table className="data-table inventory-table">
-
             <thead>
               <tr>
                 <th>SKU</th>
                 <th>Material</th>
-                <th>Código</th>
+                <th>CÃ³digo</th>
                 <th>Reemplazo</th>
-                <th>Ubicación</th>
+                <th>UbicaciÃ³n</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -645,11 +602,8 @@ function InventarioPage() {
             <tbody>
               {inventarioFiltrado.map((registro) => (
                 <tr key={registro.id}>
-
                   <td>
-                    <span className="sku-code">
-                      {registro.sku}
-                    </span>
+                    <span className="sku-code">{registro.sku}</span>
                   </td>
 
                   <td>
@@ -658,20 +612,16 @@ function InventarioPage() {
 
                   <td>
                     <span className="external-code">
-                      {registro.codigo || "Sin código"}
+                      {registro.codigo || "Sin cÃ³digo"}
                     </span>
                   </td>
 
-                  <td>
-                    {registro.codigoReemplazo || "—"}
-                  </td>
+                  <td>{registro.codigoReemplazo || "â€”"}</td>
 
                   <td>
                     <span className="location-badge">
                       {registro.ubicacion}
-                      {registro.subdivision
-                        ? ` · ${registro.subdivision}`
-                        : ""}
+                      {registro.subdivision ? ` Â· ${registro.subdivision}` : ""}
                     </span>
                   </td>
 
@@ -689,11 +639,10 @@ function InventarioPage() {
 
                   <td>
                     <div className="table-actions">
-
                       <button
                         type="button"
                         className="icon-action"
-                        title="Editar asociación"
+                        title="Editar asociaciÃ³n"
                         onClick={() => abrirEdicion(registro)}
                       >
                         <Pencil size={17} />
@@ -711,10 +660,8 @@ function InventarioPage() {
                       >
                         <Power size={17} />
                       </button>
-
                     </div>
                   </td>
-
                 </tr>
               ))}
 
@@ -724,19 +671,16 @@ function InventarioPage() {
                     <div className="empty-table">
                       <Boxes size={38} />
 
-                      <strong>
-                        No hay asociaciones registradas
-                      </strong>
+                      <strong>No hay asociaciones registradas</strong>
 
                       <span>
-                        Registra el primer material y asígnale una
-                        ubicación física.
+                        Registra el primer material y asÃ­gnale una ubicaciÃ³n
+                        fÃ­sica.
                       </span>
                     </div>
                   </td>
                 </tr>
               )}
-
             </tbody>
           </table>
         </div>
@@ -753,23 +697,19 @@ function InventarioPage() {
             }
           }}
         >
-
           <div className="modal-card inventory-modal">
-
             {/* CABECERA DEL MODAL */}
 
             <div className="modal-header">
               <div>
                 <span className="page-eyebrow">
-                  {registroEditando
-                    ? "EDITAR ASOCIACIÓN"
-                    : "NUEVA ASOCIACIÓN"}
+                  {registroEditando ? "EDITAR ASOCIACIÃ“N" : "NUEVA ASOCIACIÃ“N"}
                 </span>
 
                 <h2>
                   {registroEditando
                     ? "Editar material en inventario"
-                    : "Asignar ubicación al material"}
+                    : "Asignar ubicaciÃ³n al material"}
                 </h2>
               </div>
 
@@ -784,14 +724,12 @@ function InventarioPage() {
             </div>
 
             <form onSubmit={guardarRegistro}>
-
               {/* BUSCADOR DE MATERIAL */}
 
               {!registroEditando && (
                 <div className="form-group form-full material-search-container">
-
                   <label htmlFor="materialSearch">
-                    Material del Catálogo Maestro *
+                    Material del CatÃ¡logo Maestro *
                   </label>
 
                   <div className="material-search-input">
@@ -803,45 +741,35 @@ function InventarioPage() {
                       value={busquedaMaterial}
                       placeholder="Buscar material por nombre..."
                       autoComplete="off"
-                      onFocus={() =>
-                        setMostrarResultados(true)
-                      }
+                      onFocus={() => setMostrarResultados(true)}
                       onChange={cambiarBusquedaMaterial}
                     />
                   </div>
 
-                  {mostrarResultados &&
-                    busquedaMaterial.trim().length >= 1 && (
-                      <div className="material-search-results">
+                  {mostrarResultados && busquedaMaterial.trim().length >= 1 && (
+                    <div className="material-search-results">
+                      {materialesFiltrados.length > 0 ? (
+                        materialesFiltrados.map((material) => (
+                          <button
+                            key={material.id}
+                            type="button"
+                            className="material-search-option"
+                            onClick={() => seleccionarMaterial(material)}
+                          >
+                            <div>
+                              <strong>{material.descripcion}</strong>
 
-                        {materialesFiltrados.length > 0 ? (
-                          materialesFiltrados.map((material) => (
-                            <button
-                              key={material.id}
-                              type="button"
-                              className="material-search-option"
-                              onClick={() =>
-                                seleccionarMaterial(material)
-                              }
-                            >
-                              <div>
-                                <strong>
-                                  {material.descripcion}
-                                </strong>
-
-                                <span>{material.sku}</span>
-                              </div>
-                            </button>
-                          ))
-                        ) : (
-                          <div className="material-search-empty">
-                            No se encontraron materiales.
-                          </div>
-                        )}
-
-                      </div>
-                    )}
-
+                              <span>{material.sku}</span>
+                            </div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="material-search-empty">
+                          No se encontraron materiales.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -858,16 +786,12 @@ function InventarioPage() {
                 </div>
               )}
 
-              {/* FOTOGRAFÍA */}
+              {/* FOTOGRAFÃA */}
 
               <div className="form-group form-full inventory-photo-field">
-
-                <label>
-                  Fotografía del repuesto (opcional)
-                </label>
+                <label>FotografÃ­a del repuesto (opcional)</label>
 
                 <div className="inventory-photo-content">
-
                   <div className="inventory-photo-preview">
                     {formulario.foto ? (
                       <img
@@ -880,27 +804,22 @@ function InventarioPage() {
                   </div>
 
                   <div className="inventory-photo-actions">
-
                     <button
                       type="button"
                       className="button button-secondary"
-                      onClick={() =>
-                        camaraInputRef.current?.click()
-                      }
+                      onClick={() => camaraInputRef.current?.click()}
                     >
                       <Camera size={16} />
-                      Tomar fotografía
+                      Tomar fotografÃ­a
                     </button>
 
                     <button
                       type="button"
                       className="button button-secondary"
-                      onClick={() =>
-                        galeriaInputRef.current?.click()
-                      }
+                      onClick={() => galeriaInputRef.current?.click()}
                     >
                       <ImageIcon size={16} />
-                      Elegir de galería
+                      Elegir de galerÃ­a
                     </button>
 
                     {formulario.foto && (
@@ -910,16 +829,13 @@ function InventarioPage() {
                         onClick={eliminarFotografia}
                       >
                         <Trash2 size={14} />
-                        Quitar fotografía
+                        Quitar fotografÃ­a
                       </button>
                     )}
-
                   </div>
                 </div>
 
-                <small>
-                  JPG, PNG o WEBP. Tamaño máximo: 2 MB.
-                </small>
+                <small>JPG, PNG o WEBP. TamaÃ±o mÃ¡ximo: 2 MB.</small>
 
                 <input
                   ref={camaraInputRef}
@@ -937,30 +853,22 @@ function InventarioPage() {
                   onChange={cambiarFotografia}
                   hidden
                 />
-
               </div>
 
-              {/* CÓDIGOS */}
+              {/* CÃ“DIGOS */}
 
               <div className="inventory-form-grid">
-
                 <div className="form-group form-full code-question">
-
-                  <label>
-                    ¿El repuesto tiene código?
-                  </label>
+                  <label>Â¿El repuesto tiene cÃ³digo?</label>
 
                   <div
                     className="code-radio-group"
                     role="radiogroup"
-                    aria-label="¿El repuesto tiene código?"
+                    aria-label="Â¿El repuesto tiene cÃ³digo?"
                   >
-
                     <label
                       className={`code-radio-option ${
-                        formulario.tieneCodigo === true
-                          ? "selected"
-                          : ""
+                        formulario.tieneCodigo === true ? "selected" : ""
                       }`}
                     >
                       <input
@@ -972,14 +880,12 @@ function InventarioPage() {
                       />
 
                       <Check size={19} />
-                      <span>Sí, tiene código</span>
+                      <span>SÃ­, tiene cÃ³digo</span>
                     </label>
 
                     <label
                       className={`code-radio-option ${
-                        formulario.tieneCodigo === false
-                          ? "selected"
-                          : ""
+                        formulario.tieneCodigo === false ? "selected" : ""
                       }`}
                     >
                       <input
@@ -991,20 +897,17 @@ function InventarioPage() {
                       />
 
                       <X size={19} />
-                      <span>No tiene código</span>
+                      <span>No tiene cÃ³digo</span>
                     </label>
-
                   </div>
                 </div>
 
                 {formulario.tieneCodigo && (
                   <>
-
                     <div className="form-group">
-
                       <label htmlFor="codigo">
                         <Barcode size={15} />
-                        Código del repuesto *
+                        CÃ³digo del repuesto *
                       </label>
 
                       <input
@@ -1017,15 +920,12 @@ function InventarioPage() {
                         required
                       />
 
-                      <small>
-                        Ingresa el código utilizado por el almacén.
-                      </small>
+                      <small>Ingresa el cÃ³digo utilizado por el almacÃ©n.</small>
                     </div>
 
                     <div className="form-group">
-
                       <label htmlFor="codigoReemplazo">
-                        Código de reemplazo
+                        CÃ³digo de reemplazo
                       </label>
 
                       <input
@@ -1037,100 +937,69 @@ function InventarioPage() {
                         placeholder="Opcional"
                       />
 
-                      <small>
-                        Solo si existe un código alternativo.
-                      </small>
+                      <small>Solo si existe un cÃ³digo alternativo.</small>
                     </div>
-
                   </>
                 )}
-
               </div>
 
-              {/* UBICACIÓN FÍSICA */}
+              {/* UBICACIÃ“N FÃSICA */}
 
               <div className="form-group form-full">
-
                 <label>
                   <MapPin size={15} />
-                  Ubicación física *
+                  UbicaciÃ³n fÃ­sica *
                 </label>
 
                 <div
                   className="custom-location-select"
                   onBlur={(event) => {
-                    if (
-                      !event.currentTarget.contains(
-                        event.relatedTarget
-                      )
-                    ) {
+                    if (!event.currentTarget.contains(event.relatedTarget)) {
                       setUbicacionMenuAbierto(false);
                     }
                   }}
                 >
-
                   <button
                     type="button"
                     className={`location-select-trigger ${
                       ubicacionMenuAbierto ? "is-open" : ""
-                    } ${
-                      formulario.ubicacion ? "has-value" : ""
-                    }`}
-                    onClick={() =>
-                      setUbicacionMenuAbierto((actual) => !actual)
-                    }
+                    } ${formulario.ubicacion ? "has-value" : ""}`}
+                    onClick={() => setUbicacionMenuAbierto((actual) => !actual)}
                     aria-expanded={ubicacionMenuAbierto}
                     aria-haspopup="listbox"
                   >
-
                     <div className="location-trigger-content">
-
                       <div className="location-trigger-icon">
                         <Boxes size={20} />
                       </div>
 
                       <div className="location-trigger-text">
-
                         <strong>
-                          {formulario.ubicacion ||
-                            "Seleccionar ubicación"}
+                          {formulario.ubicacion || "Seleccionar ubicaciÃ³n"}
                         </strong>
 
                         <span>
                           {ubicacionFormulario
                             ? ubicacionFormulario.tieneSubdivisiones
                               ? "Jaba con subdivisiones internas"
-                              : "Jaba estándar"
-                            : "Selecciona el espacio físico del material"}
+                              : "Jaba estÃ¡ndar"
+                            : "Selecciona el espacio fÃ­sico del material"}
                         </span>
-
                       </div>
                     </div>
 
-                    <ChevronDown
-                      size={19}
-                      className="location-chevron"
-                    />
-
+                    <ChevronDown size={19} className="location-chevron" />
                   </button>
 
                   {/* LISTA DE UBICACIONES */}
 
                   {ubicacionMenuAbierto && (
-                    <div
-                      className="location-options-panel"
-                      role="listbox"
-                    >
-
+                    <div className="location-options-panel" role="listbox">
                       <div className="location-options-heading">
                         <div>
-                          <strong>
-                            Ubicaciones disponibles
-                          </strong>
+                          <strong>Ubicaciones disponibles</strong>
 
-                          <span>
-                            Selecciona una jaba del almacén
-                          </span>
+                          <span>Selecciona una jaba del almacÃ©n</span>
                         </div>
 
                         <span className="location-options-count">
@@ -1139,11 +1008,8 @@ function InventarioPage() {
                       </div>
 
                       <div className="location-options-list">
-
                         {ubicacionesAlmacen.map((ubicacion) => {
-
-                          const tieneDivisiones =
-                            ubicacion.tieneSubdivisiones;
+                          const tieneDivisiones = ubicacion.tieneSubdivisiones;
 
                           const seleccionada =
                             formulario.ubicacion === ubicacion.nombre;
@@ -1165,15 +1031,10 @@ function InventarioPage() {
                                   ? "option-divided"
                                   : "option-standard"
                               } ${
-                                capacidad.completa
-                                  ? "location-option-full"
-                                  : ""
+                                capacidad.completa ? "location-option-full" : ""
                               }`}
-                              onClick={() =>
-                                seleccionarUbicacion(ubicacion)
-                              }
+                              onClick={() => seleccionarUbicacion(ubicacion)}
                             >
-
                               <div className="location-option-icon">
                                 {tieneDivisiones ? (
                                   <Boxes size={19} />
@@ -1183,32 +1044,24 @@ function InventarioPage() {
                               </div>
 
                               <div className="location-option-info">
-
-                                <strong>
-                                  {ubicacion.nombre}
-                                </strong>
+                                <strong>{ubicacion.nombre}</strong>
 
                                 <span>
                                   Estante {ubicacion.estante}
-                                  {" · "}
+                                  {" Â· "}
                                   Piso {ubicacion.piso}
-                                  {" · "}
+                                  {" Â· "}
                                   Columna {ubicacion.columna}
                                 </span>
-
                               </div>
 
                               {/* CAPACIDAD A LA DERECHA */}
 
                               <div className="location-option-side">
-
                                 <div className="location-option-capacity">
-
                                   <div className="location-capacity-label">
-
                                     <strong>
-                                      {capacidad.ocupados}/
-                                      {capacidad.capacidad}
+                                      {capacidad.ocupados}/{capacidad.capacidad}
                                     </strong>
 
                                     <small>
@@ -1216,11 +1069,9 @@ function InventarioPage() {
                                         ? "Completa"
                                         : `${capacidad.disponibles} libres`}
                                     </small>
-
                                   </div>
 
                                   <div className="location-capacity-track">
-
                                     <div
                                       className={
                                         capacidad.completa
@@ -1231,9 +1082,7 @@ function InventarioPage() {
                                         width: `${capacidad.porcentaje}%`,
                                       }}
                                     />
-
                                   </div>
-
                                 </div>
 
                                 <span
@@ -1243,11 +1092,8 @@ function InventarioPage() {
                                       : "badge-standard"
                                   }`}
                                 >
-                                  {tieneDivisiones
-                                    ? "3 × 2"
-                                    : "Estándar"}
+                                  {tieneDivisiones ? "3 Ã— 2" : "EstÃ¡ndar"}
                                 </span>
-
                               </div>
 
                               {seleccionada && (
@@ -1256,15 +1102,12 @@ function InventarioPage() {
                                   className="location-selected-check"
                                 />
                               )}
-
                             </button>
                           );
                         })}
-
                       </div>
 
                       <div className="location-options-footer">
-
                         <span className="location-legend divided">
                           <i />
                           Con subdivisiones
@@ -1274,15 +1117,12 @@ function InventarioPage() {
                           <i />
                           Sin subdivisiones
                         </span>
-
                       </div>
-
                     </div>
                   )}
-
                 </div>
 
-                {/* INFORMACIÓN DE UBICACIÓN SELECCIONADA */}
+                {/* INFORMACIÃ“N DE UBICACIÃ“N SELECCIONADA */}
 
                 {ubicacionFormulario && (
                   <div
@@ -1292,55 +1132,46 @@ function InventarioPage() {
                         : "selected-standard"
                     }`}
                   >
-
                     <div className="location-selected-icon">
                       <Boxes size={21} />
                     </div>
 
                     <div className="location-selected-description">
-
                       <strong>
                         Estante {ubicacionFormulario.estante}
-                        {" · "}
+                        {" Â· "}
                         {ubicacionFormulario.nombre}
                       </strong>
 
                       <span>
                         Piso {ubicacionFormulario.piso}
-                        {" · "}
+                        {" Â· "}
                         Columna {ubicacionFormulario.columna}
                       </span>
 
                       <p>
                         {ubicacionFormulario.tieneSubdivisiones
-                          ? "Esta jaba dispone de 6 divisiones internas. Selecciona la división donde guardarás el material."
-                          : "Espacio estándar sin subdivisiones internas. El material se asignará directamente a esta ubicación."}
+                          ? "Esta jaba dispone de 6 divisiones internas. Selecciona la divisiÃ³n donde guardarÃ¡s el material."
+                          : "Espacio estÃ¡ndar sin subdivisiones internas. El material se asignarÃ¡ directamente a esta ubicaciÃ³n."}
                       </p>
-
                     </div>
 
                     <span className="location-selected-badge">
                       {ubicacionFormulario.tieneSubdivisiones
-                        ? "3 × 2"
-                        : "Estándar"}
+                        ? "3 Ã— 2"
+                        : "EstÃ¡ndar"}
                     </span>
-
                   </div>
                 )}
-
               </div>
 
               {/* DIVISIONES INTERNAS */}
 
               {ubicacionFormulario?.tieneSubdivisiones && (
                 <div className="form-group form-full subdivision-selector">
-
-                  <label>
-                    División interna *
-                  </label>
+                  <label>DivisiÃ³n interna *</label>
 
                   <div className="custom-subdivision-select">
-
                     <button
                       type="button"
                       className={`subdivision-trigger ${
@@ -1348,37 +1179,27 @@ function InventarioPage() {
                       }`}
                       onClick={() => {
                         setUbicacionMenuAbierto(false);
-                        setSubdivisionMenuAbierto(
-                          (actual) => !actual
-                        );
+                        setSubdivisionMenuAbierto((actual) => !actual);
                       }}
                       aria-expanded={subdivisionMenuAbierto}
                       aria-haspopup="listbox"
                     >
-
                       <div className="subdivision-trigger-content">
-
                         <strong>
-                          {formulario.subdivision ||
-                            "Seleccionar división"}
+                          {formulario.subdivision || "Seleccionar divisiÃ³n"}
                         </strong>
 
                         <span>
                           {formulario.subdivision
                             ? ubicacionFormulario.subdivisiones.find(
                                 (division) =>
-                                  division.id === formulario.subdivision
+                                  division.id === formulario.subdivision,
                               )?.nombre
                             : "Selecciona el espacio interno del material"}
                         </span>
-
                       </div>
 
-                      <ChevronDown
-                        size={18}
-                        className="location-chevron"
-                      />
-
+                      <ChevronDown size={18} className="location-chevron" />
                     </button>
 
                     {subdivisionMenuAbierto && (
@@ -1387,70 +1208,51 @@ function InventarioPage() {
                         role="listbox"
                         aria-label="Divisiones internas"
                       >
+                        {ubicacionFormulario.subdivisiones.map((division) => {
+                          const seleccionada =
+                            formulario.subdivision === division.id;
 
-                        {ubicacionFormulario.subdivisiones.map(
-                          (division) => {
+                          const ocupada = divisionEstaOcupada(
+                            ubicacionFormulario,
+                            division.id,
+                          );
 
-                            const seleccionada =
-                              formulario.subdivision === division.id;
+                          return (
+                            <button
+                              key={division.id}
+                              type="button"
+                              className={`subdivision-option ${
+                                seleccionada ? "selected" : ""
+                              } ${ocupada ? "division-option-full" : ""}`}
+                              role="option"
+                              aria-selected={seleccionada}
+                              disabled={ocupada}
+                              onClick={() => seleccionarSubdivision(division)}
+                            >
+                              <strong>{division.id}</strong>
 
-                            const ocupada =
-                              divisionEstaOcupada(
-                                ubicacionFormulario,
-                                division.id
-                              );
+                              <span>{division.nombre}</span>
 
-                            return (
-                              <button
-                                key={division.id}
-                                type="button"
-                                className={`subdivision-option ${
-                                  seleccionada ? "selected" : ""
-                                } ${
-                                  ocupada
-                                    ? "division-option-full"
-                                    : ""
-                                }`}
-                                role="option"
-                                aria-selected={seleccionada}
-                                disabled={ocupada}
-                                onClick={() =>
-                                  seleccionarSubdivision(division)
-                                }
-                              >
-
-                                <strong>{division.id}</strong>
-
-                                <span>{division.nombre}</span>
-
-                                {ocupada ? (
-                                  <small>Ocupada</small>
-                                ) : seleccionada ? (
-                                  <Check size={15} />
-                                ) : (
-                                  <small>Disponible</small>
-                                )}
-
-                              </button>
-                            );
-                          }
-                        )}
-
+                              {ocupada ? (
+                                <small>Ocupada</small>
+                              ) : seleccionada ? (
+                                <Check size={15} />
+                              ) : (
+                                <small>Disponible</small>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
-
                   </div>
-
                 </div>
               )}
 
               {/* OBSERVACIONES */}
 
               <div className="form-group form-full">
-
-                <label htmlFor="observacion">
-                  Observación
-                </label>
+                <label htmlFor="observacion">ObservaciÃ³n</label>
 
                 <textarea
                   id="observacion"
@@ -1458,23 +1260,17 @@ function InventarioPage() {
                   rows="3"
                   value={formulario.observacion}
                   onChange={actualizarCampo}
-                  placeholder="Información adicional del material..."
+                  placeholder="InformaciÃ³n adicional del material..."
                 />
-
               </div>
 
               {/* ERRORES */}
 
-              {error && (
-                <div className="form-error">
-                  {error}
-                </div>
-              )}
+              {error && <div className="form-error">{error}</div>}
 
               {/* BOTONES */}
 
               <div className="modal-actions">
-
                 <button
                   type="button"
                   className="button button-secondary"
@@ -1483,23 +1279,14 @@ function InventarioPage() {
                   Cancelar
                 </button>
 
-                <button
-                  type="submit"
-                  className="button button-primary"
-                >
-                  {registroEditando
-                    ? "Guardar cambios"
-                    : "Guardar ubicación"}
+                <button type="submit" className="button button-primary">
+                  {registroEditando ? "Guardar cambios" : "Guardar ubicaciÃ³n"}
                 </button>
-
               </div>
-
             </form>
-
           </div>
         </div>
       )}
-
     </section>
   );
 }

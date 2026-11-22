@@ -1,54 +1,28 @@
-const STORAGE_KEY = "almacen_historial";
 
-export function obtenerHistorial() {
-  const almacenado = localStorage.getItem(STORAGE_KEY);
+import { apiFetch } from "./api";
 
-  if (!almacenado) {
-    return [];
-  }
+// =========================================
+// CONSULTAR HISTORIAL CENTRALIZADO
+// =========================================
 
-  try {
-    return JSON.parse(almacenado);
-  } catch {
-    return [];
-  }
-}
-
-export function registrarEvento({
-  modulo,
-  accion,
-  descripcion,
-  referencia = "",
-  usuario = "",
-}) {
-  const historial = obtenerHistorial();
-
-  const nuevoEvento = {
-    id: Date.now(),
-
-    modulo,
-    accion,
-    descripcion,
-    referencia,
-    usuario,
-
-    fecha: new Date().toISOString(),
-  };
-
-  const actualizado = [
-    nuevoEvento,
-    ...historial,
-  ];
-
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(actualizado),
+export async function obtenerHistorial(limit = 200) {
+  const limite = Math.min(
+    Math.max(Number(limit) || 200, 1),
+    500
   );
 
-  return nuevoEvento;
+  return await apiFetch(
+    `/api/historial?limit=${limite}`
+  );
 }
 
-export function limpiarHistorial() {
-  localStorage.removeItem(STORAGE_KEY);
-}
+// =========================================
+// LIMPIAR HISTORIAL
+// SOLO ADMINISTRADOR
+// =========================================
 
+export async function limpiarHistorial() {
+  return await apiFetch("/api/historial", {
+    method: "DELETE",
+  });
+}

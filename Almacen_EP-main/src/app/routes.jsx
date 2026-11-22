@@ -12,16 +12,24 @@ import InventarioPage from "../features/inventario/InventarioPage";
 import UbicacionesPage from "../features/ubicaciones/UbicacionesPage";
 import HistorialPage from "../features/historial/HistorialPage";
 
-// Protección general
+// =============================================
+// PROTECCIÓN GENERAL DE RUTAS
+// =============================================
+
 function RequireAuth({ children }) {
   const { autenticado } = useUser();
 
-  return autenticado
-    ? children
-    : <Navigate to="/login" replace />;
+  if (!autenticado) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
 }
 
-// Solo administrador
+// =============================================
+// PROTECCIÓN EXCLUSIVA PARA ADMINISTRADOR
+// =============================================
+
 function RequireAdmin({ children }) {
   const { autenticado, esAdministrador } = useUser();
 
@@ -29,12 +37,17 @@ function RequireAdmin({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  return esAdministrador
-    ? children
-    : <Navigate to="/" replace />;
+  if (!esAdministrador) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
 }
 
-// Pantalla de inicio de sesión
+// =============================================
+// RUTA DE INICIO DE SESIÓN
+// =============================================
+
 function LoginRoute() {
   const { autenticado, login } = useUser();
 
@@ -51,11 +64,18 @@ function LoginRoute() {
   );
 }
 
+// =============================================
+// CONFIGURACIÓN PRINCIPAL DEL ROUTER
+// =============================================
+
 export const router = createBrowserRouter([
+  // LOGIN
   {
     path: "/login",
     element: <LoginRoute />,
   },
+
+  // SISTEMA PROTEGIDO
   {
     path: "/",
     element: (
@@ -63,11 +83,15 @@ export const router = createBrowserRouter([
         <MainLayout />
       </RequireAuth>
     ),
+
     children: [
+      // DASHBOARD
       {
         index: true,
         element: <DashboardPage />,
       },
+
+      // CATÁLOGO MAESTRO: SOLO ADMINISTRADOR
       {
         path: "catalogo",
         element: (
@@ -76,20 +100,28 @@ export const router = createBrowserRouter([
           </RequireAdmin>
         ),
       },
+
+      // INVENTARIO
       {
         path: "inventario",
         element: <InventarioPage />,
       },
+
+      // UBICACIONES
       {
         path: "ubicaciones",
         element: <UbicacionesPage />,
       },
+
+      // HISTORIAL
       {
         path: "historial",
         element: <HistorialPage />,
       },
     ],
   },
+
+  // RUTAS NO ENCONTRADAS
   {
     path: "*",
     element: <Navigate to="/" replace />,

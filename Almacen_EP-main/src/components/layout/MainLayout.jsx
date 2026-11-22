@@ -7,14 +7,21 @@ import Header from "./Header";
 
 function MainLayout() {
   const [menuAbierto, setMenuAbierto] = useState(false);
+
   const location = useLocation();
 
-  // Cerrar el menú al cambiar de pantalla
+  // =========================================
+  // CERRAR MENÚ AL CAMBIAR DE PANTALLA
+  // =========================================
+
   useEffect(() => {
     setMenuAbierto(false);
   }, [location.pathname]);
 
-  // Cerrar el menú con Escape
+  // =========================================
+  // CERRAR MENÚ CON ESCAPE
+  // =========================================
+
   useEffect(() => {
     function manejarTecla(event) {
       if (event.key === "Escape") {
@@ -29,7 +36,10 @@ function MainLayout() {
     };
   }, []);
 
-  // Evitar desplazamiento del fondo cuando el menú está abierto
+  // =========================================
+  // CONTROLAR DESPLAZAMIENTO DEL FONDO
+  // =========================================
+
   useEffect(() => {
     if (menuAbierto) {
       document.body.classList.add("mobile-menu-open");
@@ -42,10 +52,39 @@ function MainLayout() {
     };
   }, [menuAbierto]);
 
+  // =========================================
+  // CERRAR MENÚ AL CAMBIAR DE PESTAÑA
+  // =========================================
+
+  useEffect(() => {
+    function manejarVisibilidad() {
+      if (document.hidden) {
+        setMenuAbierto(false);
+      }
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      manejarVisibilidad
+    );
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        manejarVisibilidad
+      );
+    };
+  }, []);
+
+  // =========================================
+  // INTERFAZ PRINCIPAL
+  // =========================================
+
   return (
     <div className="app-shell">
 
       {/* FONDO OSCURO DEL MENÚ MÓVIL */}
+
       {menuAbierto && (
         <button
           type="button"
@@ -56,16 +95,20 @@ function MainLayout() {
       )}
 
       {/* MENÚ LATERAL */}
+
       <Sidebar
         abierto={menuAbierto}
         onCerrar={() => setMenuAbierto(false)}
       />
 
       {/* CONTENIDO PRINCIPAL */}
+
       <div className="app-main">
 
         <Header
-          onMenuClick={() => setMenuAbierto((actual) => !actual)}
+          onMenuClick={() =>
+            setMenuAbierto((actual) => !actual)
+          }
           menuAbierto={menuAbierto}
         />
 
@@ -74,6 +117,7 @@ function MainLayout() {
         </main>
 
       </div>
+
     </div>
   );
 }

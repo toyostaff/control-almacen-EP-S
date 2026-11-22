@@ -1,5 +1,247 @@
-import {Router} from 'express';import{pool}from'../config/db.js';import{autenticar}from'../middleware/auth.js';
-const router=Router();router.use(autenticar);
-router.get('/',async(req,res,next)=>{try{const [loc]=await pool.query('SELECT * FROM ubicaciones ORDER BY estante,piso,columna_num');const [subs]=await pool.query('SELECT * FROM subdivisiones ORDER BY ubicacion_id,fila_num,columna_num');const data=loc.map(u=>({id:u.id,estante:u.estante,piso:u.piso,columna:u.columna_num,fila:u.estante,nombre:u.id,tieneSubdivisiones:Boolean(u.tiene_subdivisiones),tipoDivision:u.tipo_division,subdivisiones:subs.filter(s=>s.ubicacion_id===u.id).map(s=>({id:s.codigo,nombre:s.nombre,fila:s.fila_num,columna:s.columna_num}))}));res.json({ok:true,data});}catch(e){next(e);}});
-router.get('/ocupacion',async(req,res,next)=>{try{const [rows]=await pool.query(`SELECT u.id ubicacion, u.tiene_subdivisiones, COUNT(i.id) ocupados, (SELECT COUNT(*) FROM subdivisiones s WHERE s.ubicacion_id=u.id) capacidad_divisiones FROM ubicaciones u LEFT JOIN inventario i ON i.ubicacion_id=u.id AND i.estado='Activo' GROUP BY u.id ORDER BY u.id`);res.json({ok:true,data:rows.map(r=>({ubicacion:r.ubicacion,ocupados:r.ocupados,capacidad:r.tiene_subdivisiones?r.capacidad_divisiones:1,disponibles:Math.max(0,(r.tiene_subdivisiones?r.capacidad_divisiones:1)-r.ocupados)}))});}catch(e){next(e);}});
+
+import { Router } from "express";
+
+import { pool } from "../config/db.js";
+import { autenticar } from "../middleware/auth.js";
+
+const router = Router();
+
+router.use(autenticar);
+
+// =============================================
+// CONSULTAR UBICACIONES Y SUBDIVISIONES
+// =============================================
+
+router.get("/", async (req, res, next) => {
+  try {
+
+    // Consultar ubicaciones
+    const [ubicaciones] = await pool.query(`
+      SELECT
+        id,
+        estante,
+        piso,
+        columna_num,
+        tiene_subdivisiones,
+        tipo_division
+      FROM ubicaciones
+      ORDER BY estante, piso, columna_num
+    `);
+
+    // Consultar subdivisiones
+    const [subdivisiones] = await pool.query(`
+      SELECT
+        id,
+        ubicacion_id,
+        codigo,
+        nombre,
+        fila_num,
+        columna_num
+      FROM subdivisiones
+      ORDER BY ubicacion_id, fila_num, columna_num
+    `);
+
+    // Consultar ocupación por ubicación y subdivisión
+    const [inventario] = await pool.query(`
+      SELECT
+        ubicacion_id,
+        subdivision_codigo,
+        COUNT(*) AS cantidad
+      FROM inventario
+      WHERE estado = 'Activo'
+      GROUP BY ubicacion_id, subdivision_codigo
+    `);
+
+    // Agrupar subdivisiones por ubicación
+    const subdivisionesPorUbicacion = new Map();
+
+    for (const subdivision of subdivisiones) {
+
+      const clave = String(subdivision.ubicacion_id);
+
+      if (!subdivisionesPorUbicacion.has(clave)) {
+        subdivisionesPorUbicacion.set(clave, []);
+      }
+
+      subdivisionesPorUbicacion.get(clave).push(
+        subdivision
+      );
+    }
+
+    // Agrupar ocupación por ubicación
+    const ocupacionPorUbicacion = new Map();
+
+    for (const registro of inventario) {
+
+      const clave = String(registro.ubicacion_id);
+
+      if (!ocupacionPorUbicacion.has(clave)) {
+        ocupacionPorUbicacion.set(clave, []);
+      }
+
+      ocupacionPorUbicacion.get(clave).push(registro);
+    }
+
+    // Construir respuesta
+    const data = ubicaciones.map((ubicacion) => {
+
+      const id = String(ubicacion.id);
+
+      const tieneSubdivisiones = Boolean(
+        ubicacion.tiene_subdivisiones
+      );
+
+      const subdivisionesUbicacion =
+        subdivisionesPorUbicacion.get(id) || [];
+
+      const registrosInventario =
+        ocupacionPorUbicacion.get(id) || [];
+
+      const subdivisionesData = subdivisionesUbicacion.map(
+        (subdivision) => {
+
+          const registro = registrosInventario.find(
+            (item) =>
+              String(item.subdivision_codigo || "") ===
+              String(subdivision.codigo)
+          );
+
+          const cantidad = Number(registro?.cantidad || 0);
+
+          return {
+            id: subdivision.codigo,
+            nombre: subdivision.nombre,
+            fila: Number(subdivision.fila_num),
+            columna: Number(subdivision.columna_num),
+            ocupada: cantidad > 0,
+            componentes: cantidad,
+          };
+        }
+      );
+
+      const ocupados = tieneSubdivisiones
+        ? subdivisionesData.filter(
+            (subdivision) => subdivision.ocupada
+          ).length
+        : registrosInventario.reduce(
+            (total, registro) =>
+              total + Number(registro.cantidad),
+            0
+          );
+
+      const capacidad = tieneSubdivisiones
+        ? subdivisionesData.length
+        : 1;
+
+      return {
+        id: ubicacion.id,
+        estante: ubicacion.estante,
+        piso: Number(ubicacion.piso),
+        columna: Number(ubicacion.columna_num),
+
+        // Se conserva por compatibilidad con el frontend
+        fila: ubicacion.estante,
+
+        nombre: ubicacion.id,
+
+        tieneSubdivisiones,
+
+        tipoDivision: ubicacion.tipo_division,
+
+        subdivisiones: subdivisionesData,
+
+        ocupados,
+
+        capacidad,
+
+        disponibles: Math.max(0, capacidad - ocupados),
+      };
+    });
+
+    return res.status(200).json({
+      ok: true,
+      data,
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+// =============================================
+// CONSULTAR OCUPACIÓN REAL DEL ALMACÉN
+// =============================================
+
+router.get("/ocupacion", async (req, res, next) => {
+  try {
+
+    const [rows] = await pool.query(`
+      SELECT
+        u.id AS ubicacion,
+        u.tiene_subdivisiones,
+
+        (
+          SELECT COUNT(*)
+          FROM subdivisiones s
+          WHERE s.ubicacion_id = u.id
+        ) AS capacidad_divisiones,
+
+        (
+          SELECT COUNT(
+            DISTINCT
+            CASE
+              WHEN u.tiene_subdivisiones = 1
+                THEN NULLIF(i.subdivision_codigo, '')
+              ELSE CAST(i.id AS CHAR)
+            END
+          )
+          FROM inventario i
+          WHERE i.ubicacion_id = u.id
+            AND i.estado = 'Activo'
+        ) AS ocupados
+
+      FROM ubicaciones u
+
+      ORDER BY
+        u.estante,
+        u.piso,
+        u.columna_num
+    `);
+
+    const data = rows.map((registro) => {
+
+      const tieneSubdivisiones = Boolean(
+        registro.tiene_subdivisiones
+      );
+
+      const ocupados = Number(registro.ocupados || 0);
+
+      const capacidad = tieneSubdivisiones
+        ? Number(registro.capacidad_divisiones)
+        : 1;
+
+      return {
+        ubicacion: registro.ubicacion,
+
+        ocupados,
+
+        capacidad,
+
+        disponibles: Math.max(
+          0,
+          capacidad - ocupados
+        ),
+      };
+    });
+
+    return res.status(200).json({
+      ok: true,
+      data,
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
