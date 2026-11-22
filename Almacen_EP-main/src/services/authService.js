@@ -16,16 +16,14 @@ function obtenerURL() {
 }
 
 // =============================================
-// PROCESAR RESPUESTA DEL SERVIDOR
+// PROCESAR RESPUESTA
 // =============================================
 
 async function procesarRespuesta(response) {
-  let resultado = {};
+  let resultado;
 
   try {
-    if (response.status !== 204) {
-      resultado = await response.json();
-    }
+    resultado = await response.json();
   } catch {
     throw new Error(
       "El servidor devolvió una respuesta inválida."
@@ -36,7 +34,7 @@ async function procesarRespuesta(response) {
     throw new Error(
       resultado?.mensaje ||
       resultado?.error ||
-      `Error del servidor (${response.status}).`
+      "Error al comunicarse con el servidor."
     );
   }
 
@@ -48,13 +46,6 @@ async function procesarRespuesta(response) {
 // =============================================
 
 export async function iniciarSesion(usuario, password) {
-
-  if (!usuario || !password) {
-    throw new Error(
-      "Usuario y contraseña son obligatorios."
-    );
-  }
-
   let response;
 
   try {
@@ -62,39 +53,99 @@ export async function iniciarSesion(usuario, password) {
       `${obtenerURL()}/api/auth/login`,
       {
         method: "POST",
-
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-
         body: JSON.stringify({
-          usuario: String(usuario).trim(),
-          password: String(password),
+          usuario,
+          password,
         }),
       }
     );
-
   } catch {
     throw new Error(
-      "No se pudo conectar con el servidor. Verifica tu conexión a internet."
+      "No se pudo conectar con el servidor."
     );
   }
 
   const resultado = await procesarRespuesta(response);
 
-  // ===========================================
-  // VALIDAR TOKEN Y USUARIO
-  // ===========================================
-
-  if (!resultado.token || !resultado.usuario) {
+  if (
+    !resultado?.usuario?.id ||
+    !resultado?.usuario?.nombre ||
+    !["admin", "almacen"].includes(resultado?.usuario?.rol)
+  ) {
     throw new Error(
-      "El servidor no devolvió una sesión válida."
+      "El servidor no devolvió un usuario válido."
     );
   }
 
+  // No solicitar ni guardar JWT.
+  // La autenticación se realiza mediante cookie HttpOnly.
+
   return {
-    token: resultado.token,
     usuario: resultado.usuario,
   };
+}
+
+// =============================================
+// RECUPERAR SESIÓN DEL NAVEGADOR
+// =============================================
+
+export async function obtenerSesion() {
+  let response;
+
+  try {
+    response = await fetch(
+      `${obtenerURL()}/api/auth/me`,
+      {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+  } catch {
+    throw new Error(
+      "No se pudo verificar la sesión con el servidor."
+    );
+  }
+
+  if (response.status === 401) {
+    return null;
+  }
+
+  const resultado = await procesarRespuesta(response);
+
+  return resultado?.usuario || null;
+}
+
+// =============================================
+// CERRAR SESIÓN
+// =============================================
+
+export async function cerrarSesionServidor() {
+  let response;
+
+  try {
+    response = await fetch(
+      `${obtenerURL()}/api/auth/logout`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+  } catch {
+    throw new Error(
+      "No se pudo conectar con el servidor para cerrar sesión."
+    );
+  }
+
+  return await procesarRespuesta(response);
 }
