@@ -5,8 +5,9 @@ const API_URL = import.meta.env.VITE_API_URL;
 // CONFIGURACIÓN CENTRAL DE LA API
 // =============================================
 
-const TOKEN_KEY = "almacen_token";
-const USER_KEY = "almacen_usuario";
+// Evitar notificaciones repetidas durante
+// múltiples solicitudes que fallen simultáneamente.
+let sesionExpiradaNotificada = false;
 
 // =============================================
 // URL CENTRAL DEL BACKEND
@@ -23,31 +24,18 @@ function obtenerURL() {
 }
 
 // =============================================
-// OBTENER TOKEN DE LA SESIÓN ACTUAL
-// =============================================
-
-function obtenerToken() {
-  try {
-    return sessionStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-// =============================================
 // PROCESAR RESPUESTA DEL SERVIDOR
 // =============================================
 
 async function procesarRespuesta(response) {
+  // Respuesta sin contenido.
   if (response.status === 204) {
     return {};
   }
 
+  // Leer respuesta JSON.
   try {
-    const resultado = await response.json();
-
-    return resultado;
-
+    return await response.json();
   } catch {
     throw new Error(
       "El servidor devolvió una respuesta inválida."
@@ -60,20 +48,20 @@ async function procesarRespuesta(response) {
 // =============================================
 
 function gestionarSesionExpirada() {
+  // Evitar múltiples eventos simultáneos.
+  if (sesionExpiradaNotificada) {
+    return;
+  }
 
-  // Eliminar credenciales de esta pestaña.
-  sessionStorage.removeItem(TOKEN_KEY);
-  sessionStorage.removeItem(USER_KEY);
+  sesionExpiradaNotificada = true;
 
-  // Avisar al contexto de usuario.
+  // Avisar al UserContext.
+  // El contexto se encarga de actualizar el estado,
+  // sincronizar las demás pestañas y redirigir al login.
+
   window.dispatchEvent(
     new Event("almacen:session-expired")
   );
-
-  // Regresar al inicio de sesión.
-  if (window.location.pathname !== "/login") {
-    window.location.replace("/login");
-  }
 }
 
 // =============================================
@@ -82,16 +70,20 @@ function gestionarSesionExpirada() {
 
 export async function apiFetch(endpoint, options = {}) {
 
-  if (typeof endpoint !== "string" || !endpoint.trim()) {
+  // ===========================================
+  // VALIDAR ENDPOINT
+  // ===========================================
+
+  if (
+    typeof endpoint !== "string" ||
+    !endpoint.trim()
+  ) {
     throw new Error(
       "La dirección del servicio no es válida."
     );
   }
 
-  const url =
-    `${obtenerURL()}/${endpoint.replace(/^\/+/, "")}`;
-
-  const token = obtenerToken();
+  const url = `${obtenerURL()}/${endpoint.replace(/^\/+/, "")}`;
 
   // ===========================================
   // DETECTAR FORM DATA
@@ -114,10 +106,6 @@ export async function apiFetch(endpoint, options = {}) {
         : {}
     ),
 
-    ...(token
-      ? { Authorization: `Bearer ${token}` }
-      : {}),
-
     ...options.headers,
   };
 
@@ -134,11 +122,13 @@ export async function apiFetch(endpoint, options = {}) {
 
       headers,
 
-      // No utilizamos cookies.
-      // La autenticación se realiza mediante JWT.
+      // IMPORTANTE:
+      // Enviar automáticamente la cookie HttpOnly.
+      // No utilizar JWT en Authorization.
+      credentials: "include",
     });
 
-  } catch {
+  } catch (error) {
 
     throw new Error(
       "No se pudo conectar con el servidor. Verifica tu conexión a internet."
