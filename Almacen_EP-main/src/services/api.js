@@ -5,8 +5,8 @@ const API_URL = import.meta.env.VITE_API_URL;
 // CONFIGURACIÓN CENTRAL DE LA API
 // =============================================
 
-// Evitar notificaciones repetidas durante
-// múltiples solicitudes que fallen simultáneamente.
+// Evitar notificaciones repetidas.
+
 let sesionExpiradaNotificada = false;
 
 // =============================================
@@ -24,18 +24,28 @@ function obtenerURL() {
 }
 
 // =============================================
+// RESTABLECER ESTADO DE AUTENTICACIÓN
+// =============================================
+
+// Se ejecuta después de iniciar sesión correctamente.
+
+export function restablecerNotificacionSesion() {
+  sesionExpiradaNotificada = false;
+}
+
+// =============================================
 // PROCESAR RESPUESTA DEL SERVIDOR
 // =============================================
 
 async function procesarRespuesta(response) {
-  // Respuesta sin contenido.
+
   if (response.status === 204) {
     return {};
   }
 
-  // Leer respuesta JSON.
   try {
     return await response.json();
+
   } catch {
     throw new Error(
       "El servidor devolvió una respuesta inválida."
@@ -48,7 +58,7 @@ async function procesarRespuesta(response) {
 // =============================================
 
 function gestionarSesionExpirada() {
-  // Evitar múltiples eventos simultáneos.
+
   if (sesionExpiradaNotificada) {
     return;
   }
@@ -56,8 +66,7 @@ function gestionarSesionExpirada() {
   sesionExpiradaNotificada = true;
 
   // Avisar al UserContext.
-  // El contexto se encarga de actualizar el estado,
-  // sincronizar las demás pestañas y redirigir al login.
+  // El contexto sincroniza las demás pestañas.
 
   window.dispatchEvent(
     new Event("almacen:session-expired")
@@ -83,7 +92,8 @@ export async function apiFetch(endpoint, options = {}) {
     );
   }
 
-  const url = `${obtenerURL()}/${endpoint.replace(/^\/+/, "")}`;
+  const url =
+    `${obtenerURL()}/${endpoint.replace(/^\/+/, "")}`;
 
   // ===========================================
   // DETECTAR FORM DATA
@@ -119,21 +129,17 @@ export async function apiFetch(endpoint, options = {}) {
 
     response = await fetch(url, {
       ...options,
-
       headers,
 
-      // IMPORTANTE:
       // Enviar automáticamente la cookie HttpOnly.
-      // No utilizar JWT en Authorization.
       credentials: "include",
     });
 
-  } catch (error) {
+  } catch {
 
     throw new Error(
       "No se pudo conectar con el servidor. Verifica tu conexión a internet."
     );
-
   }
 
   // ===========================================
@@ -153,7 +159,6 @@ export async function apiFetch(endpoint, options = {}) {
     throw new Error(
       "Tu sesión ha expirado o no es válida. Inicia sesión nuevamente."
     );
-
   }
 
   // ===========================================
@@ -167,7 +172,6 @@ export async function apiFetch(endpoint, options = {}) {
       resultado?.error ||
       `Error al comunicarse con el servidor (${response.status}).`
     );
-
   }
 
   // ===========================================
@@ -175,5 +179,4 @@ export async function apiFetch(endpoint, options = {}) {
   // ===========================================
 
   return resultado?.data ?? resultado;
-
 }

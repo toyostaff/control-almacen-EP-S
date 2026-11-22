@@ -1,4 +1,6 @@
 
+import { restablecerNotificacionSesion } from "./api";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 // =============================================
@@ -22,12 +24,16 @@ function obtenerURL() {
 async function procesarRespuesta(response) {
   let resultado;
 
-  try {
-    resultado = await response.json();
-  } catch {
-    throw new Error(
-      "El servidor devolvió una respuesta inválida."
-    );
+  if (response.status === 204) {
+    resultado = {};
+  } else {
+    try {
+      resultado = await response.json();
+    } catch {
+      throw new Error(
+        "El servidor devolvió una respuesta inválida."
+      );
+    }
   }
 
   if (!response.ok) {
@@ -64,6 +70,7 @@ export async function iniciarSesion(usuario, password) {
         }),
       }
     );
+
   } catch {
     throw new Error(
       "No se pudo conectar con el servidor."
@@ -72,18 +79,30 @@ export async function iniciarSesion(usuario, password) {
 
   const resultado = await procesarRespuesta(response);
 
+  // ===========================================
+  // VALIDAR USUARIO RECIBIDO
+  // ===========================================
+
   if (
     !resultado?.usuario?.id ||
     !resultado?.usuario?.nombre ||
-    !["admin", "almacen"].includes(resultado?.usuario?.rol)
+    !["admin", "almacen"].includes(
+      resultado?.usuario?.rol
+    )
   ) {
     throw new Error(
       "El servidor no devolvió un usuario válido."
     );
   }
 
-  // No solicitar ni guardar JWT.
-  // La autenticación se realiza mediante cookie HttpOnly.
+  // ===========================================
+  // RESTABLECER NOTIFICACIÓN DE SESIÓN
+  // ===========================================
+
+  // La cookie HttpOnly ya fue establecida
+  // por el backend.
+
+  restablecerNotificacionSesion();
 
   return {
     usuario: resultado.usuario,
@@ -108,11 +127,15 @@ export async function obtenerSesion() {
         },
       }
     );
+
   } catch {
     throw new Error(
       "No se pudo verificar la sesión con el servidor."
     );
   }
+
+  // Si no existe sesión o el JWT venció,
+  // devolver null sin generar otro evento.
 
   if (response.status === 401) {
     return null;
@@ -141,6 +164,7 @@ export async function cerrarSesionServidor() {
         },
       }
     );
+
   } catch {
     throw new Error(
       "No se pudo conectar con el servidor para cerrar sesión."

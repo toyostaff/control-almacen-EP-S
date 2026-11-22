@@ -56,7 +56,8 @@ function usuarioValido(usuario) {
 export function UserProvider({ children }) {
   const [usuario, setUsuario] = useState(null);
 
-  const [verificandoSesion, setVerificandoSesion] = useState(true);
+  const [verificandoSesion, setVerificandoSesion] =
+    useState(true);
 
   const [cargando, setCargando] = useState(false);
 
@@ -86,13 +87,11 @@ export function UserProvider({ children }) {
       fecha: Date.now(),
     };
 
-    // Comunicación mediante BroadcastChannel.
     if (canalRef.current) {
       canalRef.current.postMessage(mensaje);
       return;
     }
 
-    // Alternativa mediante localStorage.
     try {
       localStorage.setItem(
         EVENTO_STORAGE,
@@ -115,12 +114,9 @@ export function UserProvider({ children }) {
 
     try {
       // El navegador envía automáticamente
-      // la cookie HttpOnly al backend.
+      // la cookie HttpOnly al servidor.
 
       const usuarioServidor = await obtenerSesion();
-
-      // Evitar actualizar un componente desmontado
-      // o una respuesta que ya quedó obsoleta.
 
       if (
         !montadoRef.current ||
@@ -139,12 +135,13 @@ export function UserProvider({ children }) {
       return usuarioServidor;
 
     } catch (error) {
-      if (
-        montadoRef.current &&
-        solicitudActual === solicitudRef.current
-      ) {
-        setUsuario(null);
-      }
+      // Un error de conexión no debe cerrar
+      // una sesión que todavía puede ser válida.
+
+      console.error(
+        "No se pudo verificar la sesión:",
+        error.message
+      );
 
       throw error;
     }
@@ -155,17 +152,18 @@ export function UserProvider({ children }) {
   // ===========================================
 
   const cerrarSesionLocal = useCallback(() => {
-    // Invalidar verificaciones pendientes.
+    // Invalidar solicitudes pendientes.
+
     solicitudRef.current++;
 
-    // Eliminar usuario del estado de React.
     if (montadoRef.current) {
       setUsuario(null);
+      setVerificandoSesion(false);
     }
   }, []);
 
   // ===========================================
-  // INICIALIZAR COMPONENTE
+  // CONTROL DEL MONTAJE
   // ===========================================
 
   useEffect(() => {
@@ -190,7 +188,7 @@ export function UserProvider({ children }) {
 
       } catch (error) {
         console.error(
-          "No se pudo comprobar la sesión:",
+          "Error al iniciar la sesión:",
           error.message
         );
 
@@ -215,26 +213,22 @@ export function UserProvider({ children }) {
   useEffect(() => {
     let canal = null;
 
-    // Crear canal si el navegador lo permite.
     if ("BroadcastChannel" in window) {
       canal = new BroadcastChannel(CANAL_SESION);
       canalRef.current = canal;
     }
 
-    // =========================================
-    // PROCESAR MENSAJES RECIBIDOS
-    // =========================================
+    // Procesar mensajes recibidos.
 
     async function manejarEvento(mensaje) {
       if (!mensaje?.tipo) {
         return;
       }
 
-      // Otra pestaña cerró sesión.
+      // Otra pestaña cerró sesión voluntariamente.
+
       if (mensaje.tipo === "logout") {
         cerrarSesionLocal();
-
-        setVerificandoSesion(false);
 
         if (window.location.pathname !== "/login") {
           window.location.replace("/login");
@@ -244,28 +238,21 @@ export function UserProvider({ children }) {
       }
 
       // Otra pestaña inició sesión.
+
       if (mensaje.tipo === "login") {
         try {
-          const usuarioServidor = await verificarSesion();
-
-          if (!usuarioServidor && montadoRef.current) {
-            setVerificandoSesion(false);
-          }
+          await verificarSesion();
 
         } catch (error) {
           console.error(
             "No se pudo sincronizar la sesión:",
             error.message
           );
-
-          setVerificandoSesion(false);
         }
       }
     }
 
-    // =========================================
-    // BROADCAST CHANNEL
-    // =========================================
+    // BroadcastChannel.
 
     function manejarMensaje(event) {
       manejarEvento(event.data);
@@ -276,9 +263,7 @@ export function UserProvider({ children }) {
       manejarMensaje
     );
 
-    // =========================================
-    // ALTERNATIVA LOCALSTORAGE
-    // =========================================
+    // Alternativa para navegadores sin BroadcastChannel.
 
     function manejarStorage(event) {
       if (
@@ -303,7 +288,7 @@ export function UserProvider({ children }) {
     );
 
     // =========================================
-    // DETECTAR SESIÓN EXPIRADA
+    // SESIÓN EXPIRADA
     // =========================================
 
     function manejarSesionExpirada() {
@@ -354,58 +339,6 @@ export function UserProvider({ children }) {
   ]);
 
   // ===========================================
-  // COMPROBAR SESIÓN AL VOLVER A LA PESTAÑA
-  // ===========================================
-
-  useEffect(() => {
-    async function comprobarSesionActual() {
-      if (document.hidden || !montadoRef.current) {
-        return;
-      }
-
-      try {
-        const usuarioServidor = await verificarSesion();
-
-        if (
-          !usuarioServidor &&
-          montadoRef.current &&
-          window.location.pathname !== "/login"
-        ) {
-          window.location.replace("/login");
-        }
-
-      } catch (error) {
-        console.error(
-          "Error verificando la sesión:",
-          error.message
-        );
-      }
-    }
-
-    document.addEventListener(
-      "visibilitychange",
-      comprobarSesionActual
-    );
-
-    window.addEventListener(
-      "focus",
-      comprobarSesionActual
-    );
-
-    return () => {
-      document.removeEventListener(
-        "visibilitychange",
-        comprobarSesionActual
-      );
-
-      window.removeEventListener(
-        "focus",
-        comprobarSesionActual
-      );
-    };
-  }, [verificarSesion]);
-
-  // ===========================================
   // INICIAR SESIÓN
   // ===========================================
 
@@ -424,9 +357,6 @@ export function UserProvider({ children }) {
 
         const nuevoUsuario = resultado?.usuario;
 
-        // Ya no se espera resultado.token.
-        // Tampoco se guarda ningún JWT en React.
-
         if (!usuarioValido(nuevoUsuario)) {
           throw new Error(
             "El servidor no devolvió un usuario válido."
@@ -434,14 +364,17 @@ export function UserProvider({ children }) {
         }
 
         // Invalidar verificaciones anteriores.
+
         solicitudRef.current++;
 
         // Actualizar usuario autenticado.
+
         setUsuario(nuevoUsuario);
 
         setVerificandoSesion(false);
 
         // Sincronizar las demás pestañas.
+
         notificarOtrasPestanas("login");
 
         return nuevoUsuario;
@@ -454,18 +387,21 @@ export function UserProvider({ children }) {
   );
 
   // ===========================================
-  // CERRAR SESIÓN
+  // CERRAR SESIÓN VOLUNTARIAMENTE
   // ===========================================
 
   const logout = useCallback(async () => {
     // Cerrar inmediatamente la sesión visual.
+
     cerrarSesionLocal();
 
     // Avisar a las demás pestañas.
+
     notificarOtrasPestanas("logout");
 
     try {
       // El backend elimina la cookie HttpOnly.
+
       await cerrarSesionServidor();
 
     } catch (error) {
