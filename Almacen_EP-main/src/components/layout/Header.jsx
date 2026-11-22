@@ -28,6 +28,7 @@ function Header({ onMenuClick, menuAbierto }) {
   return (
     <header className="header">
 
+      {/* BOTÓN MENÚ MÓVIL */}
       <button
         type="button"
         className="mobile-menu-button"
@@ -35,17 +36,23 @@ function Header({ onMenuClick, menuAbierto }) {
         aria-label={menuAbierto ? "Cerrar menú" : "Abrir menú"}
         aria-expanded={menuAbierto}
       >
-        {menuAbierto ? <X size={23} /> : <Menu size={23} />}
+        {menuAbierto
+          ? <X size={23} />
+          : <Menu size={23} />
+        }
       </button>
 
+      {/* TÍTULO */}
       <div className="header-title">
         <span>Sistema de Control</span>
         <strong>Gestión de Almacén</strong>
       </div>
 
+      {/* INFORMACIÓN DEL USUARIO */}
       <div className="profile-selector">
 
         <div className="profile-button">
+
           <div className="profile-avatar">
             {esAdministrador
               ? <ShieldCheck size={20} />
@@ -61,12 +68,14 @@ function Header({ onMenuClick, menuAbierto }) {
             <span>
               {esAdministrador
                 ? "Administrador"
-                : "Personal de almacén"
+                : "Personal de Motores"
               }
             </span>
           </div>
+
         </div>
 
+        {/* CERRAR SESIÓN */}
         <button
           type="button"
           className="header-logout"

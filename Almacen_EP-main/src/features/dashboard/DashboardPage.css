@@ -1,0 +1,579 @@
+
+/* =========================================
+   DASHBOARD - CONTROL DE ALMACÉN
+========================================= */
+
+.dashboard-page {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 30px;
+  color: #171717;
+}
+
+/* =========================================
+   ENCABEZADO
+========================================= */
+
+.dashboard-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 26px;
+}
+
+.dashboard-eyebrow {
+  display: block;
+  color: #d71920;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  margin-bottom: 9px;
+}
+
+.dashboard-heading h1 {
+  margin: 0;
+  font-size: 29px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+}
+
+.dashboard-heading p {
+  margin: 8px 0 0;
+  color: #777;
+  font-size: 14px;
+}
+
+/* =========================================
+   INDICADORES
+========================================= */
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.dashboard-stat-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 11px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.025);
+}
+
+.dashboard-stat-icon,
+.dashboard-heading-icon {
+  width: 43px;
+  height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #f0f5ff;
+  color: #2563eb;
+}
+
+.dashboard-stat-icon.green,
+.dashboard-heading-icon.green {
+  background: #eaf8ef;
+  color: #159447;
+}
+
+.dashboard-stat-icon.orange,
+.dashboard-heading-icon.orange {
+  background: #fff5e8;
+  color: #d97706;
+}
+
+.dashboard-stat-icon.red,
+.dashboard-heading-icon.red {
+  background: #fff0f0;
+  color: #d71920;
+}
+
+.dashboard-stat-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dashboard-stat-info > span {
+  color: #666;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dashboard-stat-info strong {
+  margin-top: 7px;
+  font-size: 27px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.dashboard-stat-info small {
+  margin-top: 5px;
+  color: #888;
+  font-size: 11px;
+}
+
+/* =========================================
+   TARJETAS GENERALES
+========================================= */
+
+.dashboard-card {
+  min-width: 0;
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 11px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.025);
+}
+
+.dashboard-main-grid,
+.dashboard-bottom-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 0.7fr;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.dashboard-card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.dashboard-section-label {
+  color: #d71920;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.dashboard-card-heading h2 {
+  margin: 7px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.dashboard-card-heading p {
+  margin: 6px 0 0;
+  color: #777;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dashboard-heading-icon {
+  width: 39px;
+  height: 39px;
+}
+
+/* =========================================
+   MAPA VISUAL
+========================================= */
+
+.dashboard-map-placeholder {
+  min-height: 235px;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 25px;
+  background: #fafafa;
+  border: 1px dashed #d9d9d9;
+  border-radius: 9px;
+}
+
+.dashboard-empty-icon {
+  color: #a0a0a0;
+  margin-bottom: 12px;
+}
+
+.dashboard-map-placeholder strong {
+  font-size: 14px;
+}
+
+.dashboard-map-placeholder p {
+  max-width: 330px;
+  color: #777;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 8px 0;
+}
+
+.dashboard-map-placeholder small {
+  color: #999;
+  font-size: 10px;
+}
+
+/* =========================================
+   OCUPACIÓN
+========================================= */
+
+.dashboard-occupancy-content {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 15px;
+  min-height: 180px;
+}
+
+.dashboard-occupancy-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  color: #d71920;
+}
+
+.dashboard-occupancy-chart strong {
+  color: #171717;
+  font-size: 25px;
+}
+
+.dashboard-occupancy-chart span {
+  color: #777;
+  font-size: 11px;
+}
+
+.dashboard-occupancy-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.dashboard-occupancy-legend > div {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #666;
+}
+
+.dashboard-occupancy-legend strong {
+  color: #222;
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.legend-dot.occupied {
+  background: #d71920;
+}
+
+.legend-dot.available {
+  background: #d9dee5;
+}
+
+.dashboard-progress {
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+}
+
+.dashboard-progress > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: #777;
+}
+
+.dashboard-progress-track {
+  height: 8px;
+  margin-top: 10px;
+  overflow: hidden;
+  background: #eeeeee;
+  border-radius: 10px;
+}
+
+.dashboard-progress-track > div {
+  width: 0;
+  height: 100%;
+  background: #d71920;
+}
+
+/* =========================================
+   ALERTAS
+========================================= */
+
+.dashboard-alerts {
+  margin-bottom: 20px;
+}
+
+.dashboard-alert-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+}
+
+.dashboard-alert-item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 15px 0;
+  border-top: 1px solid #eeeeee;
+}
+
+.dashboard-alert-icon {
+  width: 39px;
+  height: 39px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: #fff5e8;
+  color: #d97706;
+}
+
+.dashboard-alert-icon.red {
+  background: #fff0f0;
+  color: #d71920;
+}
+
+.dashboard-alert-item > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-alert-item strong {
+  font-size: 12px;
+}
+
+.dashboard-alert-item p {
+  margin: 5px 0 0;
+  color: #888;
+  font-size: 11px;
+}
+
+.dashboard-alert-status {
+  padding: 6px 9px;
+  background: #f3f3f3;
+  border-radius: 20px;
+  color: #777;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* =========================================
+   ACTIVIDAD RECIENTE
+========================================= */
+
+.dashboard-empty-state {
+  min-height: 170px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  color: #999;
+}
+
+.dashboard-empty-state strong {
+  color: #333;
+  font-size: 13px;
+}
+
+.dashboard-empty-state span {
+  max-width: 270px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* =========================================
+   REPORTES
+========================================= */
+
+.dashboard-report-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 18px;
+}
+
+.dashboard-report-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid #eee;
+  color: #999;
+}
+
+.dashboard-report-icon {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: #f1f6f2;
+  color: #168b45;
+}
+
+.dashboard-report-item > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-report-item strong,
+.dashboard-report-item span {
+  display: block;
+}
+
+.dashboard-report-item strong {
+  color: #222;
+  font-size: 12px;
+}
+
+.dashboard-report-item span {
+  margin-top: 5px;
+  color: #888;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* =========================================
+   TABLETS
+========================================= */
+
+@media (max-width: 1050px) {
+  .dashboard-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-main-grid,
+  .dashboard-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================
+   CELULARES
+========================================= */
+
+@media (max-width: 700px) {
+  .dashboard-page {
+    padding: 20px 15px;
+  }
+
+  .dashboard-heading {
+    margin-bottom: 20px;
+  }
+
+  .dashboard-heading h1 {
+    font-size: 25px;
+  }
+
+  .dashboard-heading p {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .dashboard-stats {
+    gap: 10px;
+  }
+
+  .dashboard-stat-card {
+    padding: 14px 11px;
+    gap: 9px;
+  }
+
+  .dashboard-stat-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .dashboard-stat-icon svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .dashboard-stat-info > span {
+    font-size: 10px;
+  }
+
+  .dashboard-stat-info strong {
+    font-size: 23px;
+  }
+
+  .dashboard-stat-info small {
+    font-size: 9px;
+  }
+
+  .dashboard-card {
+    padding: 16px;
+  }
+
+  .dashboard-card-heading h2 {
+    font-size: 15px;
+  }
+
+  .dashboard-card-heading p {
+    font-size: 11px;
+  }
+
+  .dashboard-map-placeholder {
+    min-height: 200px;
+  }
+
+  .dashboard-occupancy-content {
+    min-height: 155px;
+  }
+
+  .dashboard-alert-item {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-alert-item p {
+    line-height: 1.5;
+  }
+
+  .dashboard-alert-status {
+    margin-left: 51px;
+  }
+
+}
+
+/* =========================================
+   CELULARES PEQUEÑOS
+========================================= */
+
+@media (max-width: 380px) {
+  .dashboard-page {
+    padding: 16px 11px;
+  }
+
+  .dashboard-stats {
+    gap: 8px;
+  }
+
+  .dashboard-stat-card {
+    padding: 12px 9px;
+  }
+
+  .dashboard-stat-info strong {
+    font-size: 20px;
+  }
+
+  .dashboard-card {
+    padding: 13px;
+  }
+}
+
+

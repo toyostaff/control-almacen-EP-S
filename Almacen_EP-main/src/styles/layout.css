@@ -437,33 +437,39 @@ body.mobile-menu-open {
     white-space: nowrap;
   }
 
-  /* PERFIL */
+/* PERFIL MÓVIL */
 
-  .profile-selector {
-    margin-left: auto;
-  }
+.profile-selector {
+  margin-left: auto;
+}
 
-  .profile-button {
-    min-width: auto;
-    padding: 5px;
-    gap: 5px;
-  }
+.profile-button {
+  min-width: auto;
+  padding: 5px;
+  gap: 5px;
+}
 
-  .profile-avatar {
-    width: 36px;
-    height: 36px;
-  }
+/* Ocultar icono del almacén junto al usuario */
+.profile-avatar {
+  display: none;
+}
 
-  .profile-current-info {
-    display: none;
-  }
+/* Mantener visible el nombre y el cargo */
+.profile-current-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
 
-  .profile-dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    width: min(310px, calc(100vw - 24px));
-  }
+.profile-current-info strong {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.profile-current-info span {
+  font-size: 10px;
+}
 
   /* MENÚ LATERAL */
 
@@ -567,4 +573,39 @@ body.mobile-menu-open {
     transition: none;
   }
 }
+
+
+.profile-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.profile-button {
+  min-width: 0;
+}
+
+.header-logout {
+  flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+  .profile-selector {
+    gap: 6px;
+  }
+
+  .profile-current-info {
+    max-width: 125px;
+  }
+
+  .profile-current-info strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+
+
 

@@ -64,7 +64,9 @@
   z-index: 1;
 }
 
-/* MARCA */
+/* =========================================
+   MARCA
+========================================= */
 
 .login-brand {
   display: flex;
@@ -99,7 +101,9 @@
   color: rgba(255, 255, 255, 0.72);
 }
 
-/* TEXTO PRINCIPAL */
+/* =========================================
+   TEXTO PRINCIPAL
+========================================= */
 
 .login-visual-content {
   max-width: 590px;
@@ -170,7 +174,9 @@
   max-width: 420px;
 }
 
-/* ENCABEZADO */
+/* =========================================
+   ENCABEZADO
+========================================= */
 
 .login-heading {
   margin-bottom: 38px;
@@ -326,7 +332,9 @@
   cursor: not-allowed;
 }
 
-/* SEGURIDAD */
+/* =========================================
+   SEGURIDAD
+========================================= */
 
 .login-security {
   display: flex;
@@ -338,7 +346,9 @@
   font-size: 11px;
 }
 
-/* PIE DE PÁGINA */
+/* =========================================
+   PIE DE PÁGINA
+========================================= */
 
 .login-footer {
   position: absolute;
@@ -348,7 +358,9 @@
   text-align: center;
 }
 
-/* MARCA PARA MÓVIL */
+/* =========================================
+   MARCA PARA MÓVIL
+========================================= */
 
 .login-mobile-brand {
   display: none;
@@ -359,6 +371,7 @@
 ========================================= */
 
 @media (max-width: 1000px) {
+
   .login-page {
     grid-template-columns: 1fr 1fr;
   }
@@ -374,69 +387,208 @@
   .login-visual-content h1 {
     font-size: 39px;
   }
+
 }
 
 /* =========================================
    CELULARES
+   FOTOGRAFÍA COMO FONDO DE PANTALLA
 ========================================= */
 
 @media (max-width: 700px) {
+
   .login-page {
     display: block;
+    width: 100%;
     min-height: 100vh;
+    min-height: 100svh;
   }
+
+  /* Ocultar panel de escritorio */
 
   .login-visual {
     display: none;
   }
 
+  /* Fondo fotográfico */
+
   .login-form-panel {
+    position: relative;
+    isolation: isolate;
+
+    width: 100%;
     min-height: 100vh;
-    padding: 35px 24px 65px;
+    min-height: 100svh;
+
+    padding: 35px 22px 25px;
+
+    display: flex;
+    flex-direction: column;
     justify-content: center;
+    align-items: center;
+
+    background:
+      url("/login-taller.jpg")
+      center center / cover no-repeat;
   }
 
-  .login-form-container {
-    max-width: 430px;
+  /* Oscurecer fotografía */
+
+  .login-form-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+
+    background: linear-gradient(
+      135deg,
+      rgba(0, 0, 0, 0.76) 0%,
+      rgba(0, 0, 0, 0.48) 55%,
+      rgba(0, 0, 0, 0.72) 100%
+    );
   }
+
+  /* Tarjeta del formulario */
+
+  .login-form-container {
+    position: relative;
+    z-index: 1;
+
+    width: 100%;
+    max-width: 430px;
+
+    padding: 30px 25px;
+
+    background: rgba(255, 255, 255, 0.96);
+
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 16px;
+
+    box-shadow:
+      0 15px 45px rgba(0, 0, 0, 0.28);
+
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* Marca móvil */
 
   .login-mobile-brand {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 55px;
+
+    margin-bottom: 35px;
+
     color: #171717;
     font-size: 13px;
     letter-spacing: 0.5px;
+  }
+
+  .login-mobile-brand strong {
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .login-mobile-brand .login-brand-icon {
+    width: 45px;
+    height: 45px;
+  }
+
+  /* Encabezado */
+
+  .login-heading {
+    margin-bottom: 28px;
+  }
+
+  .login-heading-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 20px;
   }
 
   .login-heading h2 {
     font-size: 31px;
   }
 
-  .login-heading {
-    margin-bottom: 32px;
+  .login-heading p {
+    font-size: 13px;
   }
+
+  /* Campos */
+
+  .login-field {
+    margin-bottom: 21px;
+  }
+
+  .login-input-wrapper {
+    height: 56px;
+  }
+
+  /* Botón */
+
+  .login-submit {
+    min-height: 56px;
+  }
+
+  /* Seguridad */
+
+  .login-security {
+    margin-top: 25px;
+    line-height: 1.5;
+  }
+
+  /* Pie de página */
 
   .login-footer {
-    bottom: 18px;
-    width: calc(100% - 30px);
+    position: relative;
+    z-index: 1;
+
+    width: 100%;
+    margin-top: 25px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    color: #ffffff;
+    font-size: 10px;
+    text-align: center;
+
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
   }
+
 }
 
-/* CELULARES PEQUEÑOS */
+/* =========================================
+   CELULARES PEQUEÑOS
+========================================= */
 
 @media (max-width: 380px) {
+
   .login-form-panel {
-    padding-left: 18px;
-    padding-right: 18px;
+    padding: 25px 16px;
+  }
+
+  .login-form-container {
+    padding: 25px 19px;
   }
 
   .login-mobile-brand {
-    margin-bottom: 38px;
+    margin-bottom: 27px;
   }
 
   .login-heading h2 {
     font-size: 28px;
   }
+
+  .login-heading p {
+    font-size: 13px;
+  }
+
+  .login-field {
+    margin-bottom: 18px;
+  }
+
+  .login-security {
+    font-size: 10px;
+  }
+
 }

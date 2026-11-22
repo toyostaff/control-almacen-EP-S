@@ -5,15 +5,47 @@ import { config } from "../config/env.js";
 import { HttpError } from "../utils/httpError.js";
 
 // =============================================
+// CONFIGURACIÓN
+// =============================================
+
+const COOKIE_NAME = "almacen_session";
+
+// =============================================
+// OBTENER COOKIE DEL NAVEGADOR
+// =============================================
+
+function obtenerCookie(req, nombre) {
+  const cookies = req.headers.cookie || "";
+
+  const partes = cookies.split(";");
+
+  for (const parte of partes) {
+    const separador = parte.indexOf("=");
+
+    if (separador === -1) continue;
+
+    const clave = parte.slice(0, separador).trim();
+    const valor = parte.slice(separador + 1).trim();
+
+    if (clave === nombre) {
+      try {
+        return decodeURIComponent(valor);
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  return null;
+}
+
+// =============================================
 // AUTENTICACIÓN DE USUARIOS
 // =============================================
 
 export function autenticar(req, res, next) {
 
-  // ===========================================
-  // VALIDAR CONFIGURACIÓN JWT
-  // ===========================================
-
+  // Verificar configuración JWT.
   if (!config.jwtSecret) {
     return next(
       new HttpError(
@@ -23,15 +55,8 @@ export function autenticar(req, res, next) {
     );
   }
 
-  // ===========================================
-  // OBTENER TOKEN
-  // ===========================================
-
-  const header = req.headers.authorization || "";
-
-  const token = header.startsWith("Bearer ")
-    ? header.slice(7).trim()
-    : "";
+  // Obtener JWT desde la cookie HttpOnly.
+  const token = obtenerCookie(req, COOKIE_NAME);
 
   if (!token) {
     return next(
@@ -47,13 +72,15 @@ export function autenticar(req, res, next) {
   // ===========================================
 
   try {
-
     const payload = jwt.verify(
       token,
-      config.jwtSecret
+      config.jwtSecret,
+      {
+        algorithms: ["HS256"]
+      }
     );
 
-    // Verificar estructura del token
+    // Comprobar estructura del token.
     if (
       !payload ||
       typeof payload !== "object" ||
@@ -64,11 +91,11 @@ export function autenticar(req, res, next) {
       throw new Error("Token con información inválida.");
     }
 
-    // Guardar usuario autenticado en la petición
+    // Guardar usuario autenticado en la petición.
     req.usuario = {
       sub: payload.sub,
       nombre: payload.nombre,
-      rol: payload.rol,
+      rol: payload.rol
     };
 
     return next();
@@ -81,7 +108,6 @@ export function autenticar(req, res, next) {
         "La sesión no es válida o ha vencido. Inicia sesión nuevamente."
       )
     );
-
   }
 }
 

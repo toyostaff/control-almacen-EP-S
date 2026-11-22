@@ -5,39 +5,50 @@ const API_URL = import.meta.env.VITE_API_URL;
 // CONFIGURACIÓN CENTRAL DE LA API
 // =============================================
 
-const TOKEN_KEY = "almacen_token";
-const USER_KEY = "almacen_usuario";
-
-// =============================================
-// COMUNICACIÓN CON RAILWAY
-// =============================================
-
-export async function apiFetch(endpoint, options = {}) {
+function obtenerURL() {
   if (!API_URL) {
     throw new Error(
       "No se ha configurado la URL del backend."
     );
   }
 
-  const token = localStorage.getItem(TOKEN_KEY);
+  return API_URL.replace(/\/+$/, "");
+}
 
-  const url = `${API_URL.replace(/\/+$/, "")}/${endpoint.replace(/^\/+/, "")}`;
+// =============================================
+// COMUNICACIÓN CON RAILWAY
+// =============================================
+
+export async function apiFetch(endpoint, options = {}) {
+
+  const url = `${obtenerURL()}/${endpoint.replace(/^\/+/, "")}`;
+
+  const esFormData =
+    typeof FormData !== "undefined" &&
+    options.body instanceof FormData;
+
+  const headers = {
+    Accept: "application/json",
+
+    ...(!esFormData && options.body !== undefined
+      ? { "Content-Type": "application/json" }
+      : {}),
+
+    ...options.headers,
+  };
 
   let response;
 
   try {
     response = await fetch(url, {
       ...options,
-      headers: {
-        ...(options.body instanceof FormData
-          ? {}
-          : { "Content-Type": "application/json" }),
-        ...(token
-          ? { Authorization: `Bearer ${token}` }
-          : {}),
-        ...options.headers,
-      },
+
+      // Enviar automáticamente la cookie HttpOnly.
+      credentials: "include",
+
+      headers,
     });
+
   } catch {
     throw new Error(
       "No se pudo conectar con el servidor. Verifica tu conexión a internet."
@@ -48,14 +59,16 @@ export async function apiFetch(endpoint, options = {}) {
   // PROCESAR RESPUESTA
   // ===========================================
 
-  let resultado;
+  let resultado = {};
 
-  try {
-    resultado = await response.json();
-  } catch {
-    throw new Error(
-      "El servidor devolvió una respuesta inválida."
-    );
+  if (response.status !== 204) {
+    try {
+      resultado = await response.json();
+    } catch {
+      throw new Error(
+        "El servidor devolvió una respuesta inválida."
+      );
+    }
   }
 
   // ===========================================
@@ -63,9 +76,13 @@ export async function apiFetch(endpoint, options = {}) {
   // ===========================================
 
   if (response.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
 
+    // Avisar al contexto de usuario.
+    window.dispatchEvent(
+      new Event("almacen:session-expired")
+    );
+
+    // Regresar al inicio de sesión.
     if (window.location.pathname !== "/login") {
       window.location.replace("/login");
     }

@@ -13,12 +13,34 @@ import UbicacionesPage from "../features/ubicaciones/UbicacionesPage";
 import HistorialPage from "../features/historial/HistorialPage";
 
 // =============================================
+// PANTALLA DE VERIFICACIÓN
+// =============================================
+
+function VerificandoSesion() {
+  return (
+    <div className="page-loading">
+      <div className="loading-spinner" />
+      <p>Verificando sesión...</p>
+    </div>
+  );
+}
+
+// =============================================
 // PROTECCIÓN GENERAL DE RUTAS
 // =============================================
 
 function RequireAuth({ children }) {
-  const { autenticado } = useUser();
+  const {
+    autenticado,
+    verificandoSesion,
+  } = useUser();
 
+  // Esperar la respuesta del backend.
+  if (verificandoSesion) {
+    return <VerificandoSesion />;
+  }
+
+  // Si no existe sesión, ir al login.
   if (!autenticado) {
     return <Navigate to="/login" replace />;
   }
@@ -31,7 +53,15 @@ function RequireAuth({ children }) {
 // =============================================
 
 function RequireAdmin({ children }) {
-  const { autenticado, esAdministrador } = useUser();
+  const {
+    autenticado,
+    esAdministrador,
+    verificandoSesion,
+  } = useUser();
+
+  if (verificandoSesion) {
+    return <VerificandoSesion />;
+  }
 
   if (!autenticado) {
     return <Navigate to="/login" replace />;
@@ -49,8 +79,19 @@ function RequireAdmin({ children }) {
 // =============================================
 
 function LoginRoute() {
-  const { autenticado, login } = useUser();
+  const {
+    autenticado,
+    login,
+    verificandoSesion,
+  } = useUser();
 
+  // No mostrar login mientras se comprueba
+  // si existe una sesión válida.
+  if (verificandoSesion) {
+    return <VerificandoSesion />;
+  }
+
+  // Si ya está autenticado, ir al dashboard.
   if (autenticado) {
     return <Navigate to="/" replace />;
   }
@@ -69,15 +110,23 @@ function LoginRoute() {
 // =============================================
 
 export const router = createBrowserRouter([
+
+  // ===========================================
   // LOGIN
+  // ===========================================
+
   {
     path: "/login",
     element: <LoginRoute />,
   },
 
+  // ===========================================
   // SISTEMA PROTEGIDO
+  // ===========================================
+
   {
     path: "/",
+
     element: (
       <RequireAuth>
         <MainLayout />
@@ -85,6 +134,7 @@ export const router = createBrowserRouter([
     ),
 
     children: [
+
       // DASHBOARD
       {
         index: true,
@@ -121,9 +171,13 @@ export const router = createBrowserRouter([
     ],
   },
 
+  // ===========================================
   // RUTAS NO ENCONTRADAS
+  // ===========================================
+
   {
     path: "*",
     element: <Navigate to="/" replace />,
   },
+
 ]);

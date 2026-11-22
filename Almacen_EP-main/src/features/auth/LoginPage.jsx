@@ -45,7 +45,6 @@ function LoginPage({ onLogin }) {
       await onLogin(nombreUsuario, password);
 
       navigate("/", { replace: true });
-
     } catch (err) {
       setError(
         err.message || "No se pudo iniciar sesión."
@@ -58,7 +57,8 @@ function LoginPage({ onLogin }) {
   return (
     <main className="login-page">
 
-      {/* PANEL IZQUIERDO */}
+      {/* PANEL VISUAL IZQUIERDO */}
+
       <section className="login-visual">
 
         <div className="login-visual-overlay" />
@@ -104,41 +104,44 @@ function LoginPage({ onLogin }) {
 
       </section>
 
-      {/* PANEL DERECHO */}
+      {/* PANEL DEL FORMULARIO */}
+
       <section className="login-form-panel">
 
         <div className="login-form-container">
 
+          {/* MARCA PARA CELULARES */}
+
           <div className="login-mobile-brand">
+
             <div className="login-brand-icon">
               <Warehouse size={25} />
             </div>
 
-            <strong>CONTROL DE ALMACÉN</strong>
+            <div>
+              <strong>CONTROL DE ALMACÉN /</strong>
+              <span> M.A.R.I.O.</span>
+            </div>
+
           </div>
 
           {/* ENCABEZADO */}
+
           <div className="login-heading">
 
-            <div className="login-heading-icon">
-              <ShieldCheck size={25} />
-            </div>
 
-            <span>BIENVENIDO AL SISTEMA</span>
+            <span>BIENVENIDO</span>
 
             <h2>Iniciar sesión</h2>
-
-            <p>
-              Ingresa tus credenciales para acceder
-              al sistema de gestión de almacén.
-            </p>
 
           </div>
 
           {/* FORMULARIO */}
+
           <form onSubmit={manejarLogin}>
 
             {/* USUARIO */}
+
             <div className="login-field">
 
               <label htmlFor="usuario">
@@ -147,17 +150,22 @@ function LoginPage({ onLogin }) {
 
               <div className="login-input-wrapper">
 
-                <UserRound size={19} />
+                <UserRound size={19} aria-hidden="true" />
 
                 <input
                   id="usuario"
                   type="text"
                   placeholder="Ingresa tu usuario"
                   value={usuario}
-                  onChange={(e) => setUsuario(e.target.value)}
+                  onChange={(e) => {
+                    setUsuario(e.target.value);
+                    setError("");
+                  }}
                   autoComplete="username"
-                  autoFocus
+                  autoCapitalize="none"
+                  spellCheck={false}
                   required
+                  disabled={cargando}
                 />
 
               </div>
@@ -165,6 +173,7 @@ function LoginPage({ onLogin }) {
             </div>
 
             {/* CONTRASEÑA */}
+
             <div className="login-field">
 
               <label htmlFor="password">
@@ -173,16 +182,20 @@ function LoginPage({ onLogin }) {
 
               <div className="login-input-wrapper">
 
-                <LockKeyhole size={19} />
+                <LockKeyhole size={19} aria-hidden="true" />
 
                 <input
                   id="password"
                   type={mostrarPassword ? "text" : "password"}
                   placeholder="Ingresa tu contraseña"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
                   autoComplete="current-password"
                   required
+                  disabled={cargando}
                 />
 
                 <button
@@ -196,6 +209,8 @@ function LoginPage({ onLogin }) {
                       ? "Ocultar contraseña"
                       : "Mostrar contraseña"
                   }
+                  aria-pressed={mostrarPassword}
+                  disabled={cargando}
                 >
                   {mostrarPassword
                     ? <EyeOff size={19} />
@@ -207,44 +222,59 @@ function LoginPage({ onLogin }) {
 
             </div>
 
-            {/* ERROR */}
+            {/* MENSAJE DE ERROR */}
+
             {error && (
-              <div className="login-error" role="alert">
+              <div
+                className="login-error"
+                role="alert"
+                aria-live="assertive"
+              >
                 {error}
               </div>
             )}
 
-            {/* INGRESAR */}
+            {/* BOTÓN DE INGRESO */}
+
             <button
               type="submit"
               className="login-submit"
               disabled={cargando}
+              aria-busy={cargando}
             >
+
               <span>
                 {cargando
                   ? "Ingresando..."
-                  : "Ingresar al sistema"}
+                  : "Ingresar"}
               </span>
 
-              {!cargando && <ArrowRight size={19} />}
+              {!cargando && (
+                <ArrowRight size={19} />
+              )}
 
             </button>
 
           </form>
 
           {/* SEGURIDAD */}
+
           <div className="login-security">
+
             <LockKeyhole size={15} />
 
             <span>
-              Acceso protegido para personal autorizado
+              Acceso protegido para personal Grupo Pana
             </span>
+
           </div>
 
         </div>
 
+        {/* PIE DE PÁGINA */}
+
         <footer className="login-footer">
-          Control de Almacén · Gestión de inventario
+          GRUPO PANA
         </footer>
 
       </section>

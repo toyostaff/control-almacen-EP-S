@@ -1,0 +1,37 @@
+warning: in the working copy of 'Almacen_EP-main/src/app/routes.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Almacen_EP-main/src/components/layout/MainLayout.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Almacen_EP-main/src/context/UserContext.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Almacen_EP-main/src/features/catalogo/CatalogoPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Almacen_EP-main/src/features/historial/HistorialPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Almacen_EP-main/src/features/inventario/InventarioPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Almacen_EP-main/src/features/ubicaciones/UbicacionesPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Almacen_EP-main/src/services/historialService.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Almacen_EP-main/src/services/inventarioService.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'almacen-backend/src/config/db.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'almacen-backend/src/config/env.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'almacen-backend/src/middleware/auth.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'almacen-backend/src/routes/catalogo.routes.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'almacen-backend/src/routes/inventario.routes.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'almacen-backend/src/routes/ubicaciones.routes.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'almacen-backend/src/server.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'almacen-backend/src/services/fotos.js', LF will be replaced by CRLF the next time Git touches it
+ Almacen_EP-main/src/app/routes.jsx                 |  50 [32m+[m[31m-[m
+ .../src/components/layout/MainLayout.jsx           |  52 [32m+[m[31m-[m
+ Almacen_EP-main/src/context/UserContext.jsx        | 206 [32m++++[m[31m-[m
+ .../src/features/catalogo/CatalogoPage.jsx         | 344 [32m++++++[m[31m--[m
+ .../src/features/historial/HistorialPage.jsx       | 729 [32m+++++++++++++[m[31m----[m
+ .../src/features/inventario/InventarioPage.jsx     | 625 [32m+++++[m[31m----------[m
+ .../src/features/ubicaciones/UbicacionesPage.jsx   | 159 [32m++[m[31m--[m
+ Almacen_EP-main/src/services/api.js                |  78 [32m+[m[31m-[m
+ Almacen_EP-main/src/services/catalogoService.js    | 122 [32m+[m[31m--[m
+ Almacen_EP-main/src/services/historialService.js   |  66 [32m+[m[31m-[m
+ Almacen_EP-main/src/services/inventarioService.js  | 255 [32m+[m[31m-----[m
+ almacen-backend/src/config/db.js                   |  96 [32m++[m[31m-[m
+ almacen-backend/src/config/env.js                  |  73 [32m+[m[31m-[m
+ almacen-backend/src/middleware/auth.js             | 100 [32m++[m[31m-[m
+ almacen-backend/src/routes/catalogo.routes.js      | 424 [32m+++++++++[m[31m-[m
+ almacen-backend/src/routes/inventario.routes.js    | 889 [32m++++++++++++++++++++[m[31m-[m
+ almacen-backend/src/routes/ubicaciones.routes.js   | 250 [32m+++++[m[31m-[m
+ almacen-backend/src/server.js                      | 421 [32m+++++++++[m[31m-[m
+ almacen-backend/src/services/fotos.js              | 320 [32m+++++++[m[31m-[m
+ 19 files changed, 3957 insertions(+), 1302 deletions(-)
