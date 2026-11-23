@@ -49,6 +49,26 @@ function normalizarTexto(texto) {
     .trim();
 }
 
+function extraerLista(respuesta) {
+  let actual = respuesta;
+
+  // Las rutas pueden devolver un arreglo directo o dentro de { data: [...] }.
+  for (let nivel = 0; nivel < 5; nivel += 1) {
+    if (Array.isArray(actual)) return actual;
+    if (!actual || typeof actual !== "object") return [];
+    if (Array.isArray(actual.data)) return actual.data;
+    if (Array.isArray(actual.ubicaciones)) return actual.ubicaciones;
+
+    if (actual.data && typeof actual.data === "object") {
+      actual = actual.data;
+      continue;
+    }
+    break;
+  }
+
+  return [];
+}
+
 function InventarioPage() {
   // ==========================================
   // ESTADOS DEL COMPONENTE
@@ -78,82 +98,127 @@ function InventarioPage() {
   // ==========================================
 
   async function cargarDatos() {
-  try {
-    const [registros, materiales, espacios] = await Promise.all([
-      obtenerInventario(),
-      obtenerCatalogo(),
-      obtenerUbicaciones(),
-    ]);
+    // Cada consulta es independiente para que un fallo no bloquee
+    // la carga de los otros módulos.
+    const [resultadoInventario, resultadoCatalogo, resultadoUbicaciones] =
+      await Promise.allSettled([
+        obtenerInventario(),
+        obtenerCatalogo(),
+        obtenerUbicaciones(),
+      ]);
 
-    const listaInventario = Array.isArray(registros)
-      ? registros
-      : Array.isArray(registros?.data)
-        ? registros.data
-        : [];
+    // ==========================================
+    // INVENTARIO
+    // ==========================================
 
-    const listaCatalogo = Array.isArray(materiales)
-      ? materiales
-      : Array.isArray(materiales?.data)
-        ? materiales.data
-        : [];
+    if (resultadoInventario.status === "fulfilled") {
+      setInventario(extraerLista(resultadoInventario.value));
+    } else {
+      console.error(
+        "Error cargando inventario:",
+        resultadoInventario.reason
+      );
+    }
 
-    const listaUbicaciones = Array.isArray(espacios)
-      ? espacios
-      : Array.isArray(espacios?.data)
-        ? espacios.data
-        : [];
+    // ==========================================
+    // CATÁLOGO MAESTRO
+    // ==========================================
 
-    setInventario(listaInventario);
+    if (resultadoCatalogo.status === "fulfilled") {
+      const listaCatalogo = extraerLista(resultadoCatalogo.value);
+      setCatalogo(
+        listaCatalogo.filter(
+          (material) => material.estado === "Activo"
+        )
+      );
+    } else {
+      console.error(
+        "Error cargando catálogo:",
+        resultadoCatalogo.reason
+      );
+    }
 
-    setCatalogo(
-      listaCatalogo.filter(
-        (material) => material.estado === "Activo"
-      )
-    );
+    // ==========================================
+    // UBICACIONES DEL ALMACÉN
+    // ==========================================
 
-    const ubicacionesNormalizadas = listaUbicaciones.map(
-      (ubicacion) => ({
-        ...ubicacion,
+    if (resultadoUbicaciones.status === "fulfilled") {
+      const respuestaUbicaciones = resultadoUbicaciones.value;
+      const listaUbicaciones = extraerLista(respuestaUbicaciones);
 
-        id: String(ubicacion.id),
+      console.log(
+        "Respuesta original de ubicaciones:",
+        respuestaUbicaciones
+      );
 
-        nombre: String(
-          ubicacion.nombre ?? ubicacion.id
-        ),
+      const ubicacionesNormalizadas = listaUbicaciones
+        .filter((ubicacion) => ubicacion && ubicacion.id != null)
+        .map((ubicacion) => {
+          const valorSubdivisiones =
+            ubicacion.tieneSubdivisiones ??
+            ubicacion.tiene_subdivisiones;
 
-        tieneSubdivisiones:
-          ubicacion.tieneSubdivisiones === true ||
-          ubicacion.tieneSubdivisiones === 1 ||
-          ubicacion.tieneSubdivisiones === "1",
+          const tieneSubdivisiones =
+            valorSubdivisiones === true ||
+            valorSubdivisiones === 1 ||
+            valorSubdivisiones === "1" ||
+            valorSubdivisiones === "true";
 
-        subdivisiones: (
-          Array.isArray(ubicacion.subdivisiones)
+          const divisiones = Array.isArray(ubicacion.subdivisiones)
             ? ubicacion.subdivisiones
-            : []
-        ).map((division) => ({
-          ...division,
-          id: String(division.id ?? division.codigo),
-        })),
-      })
-    );
+            : [];
 
-    setUbicaciones(ubicacionesNormalizadas);
+          return {
+            ...ubicacion,
+            id: String(ubicacion.id),
+            nombre: String(ubicacion.nombre ?? ubicacion.id),
+            estante: ubicacion.estante ?? "",
+            piso: Number(ubicacion.piso ?? 0),
+            columna: Number(
+              ubicacion.columna ?? ubicacion.columna_num ?? 0
+            ),
+            tieneSubdivisiones,
+            subdivisiones: divisiones.map((division) => ({
+              ...division,
+              id: String(division.id ?? division.codigo ?? ""),
+              nombre: String(
+                division.nombre ?? division.codigo ?? ""
+              ),
+              fila: Number(division.fila ?? division.fila_num ?? 0),
+              columna: Number(
+                division.columna ?? division.columna_num ?? 0
+              ),
+            })),
+          };
+        });
 
-    console.log(
-      "Ubicaciones cargadas:",
-      ubicacionesNormalizadas.length
-    );
+      setUbicaciones(ubicacionesNormalizadas);
 
-  } catch (err) {
-    console.error("Error cargando inventario:", err);
+      console.log(
+        "Total de ubicaciones recibidas:",
+        ubicacionesNormalizadas.length
+      );
+      console.log(
+        "Ubicaciones procesadas:",
+        ubicacionesNormalizadas
+      );
 
-    setError(
-      err.message ||
-      "No se pudieron cargar los datos del almacén."
-    );
+      if (ubicacionesNormalizadas.length === 0) {
+        console.error(
+          "La consulta respondió correctamente, pero no devolvió ubicaciones."
+        );
+      }
+    } else {
+      console.error(
+        "Error consultando ubicaciones:",
+        resultadoUbicaciones.reason
+      );
+      setUbicaciones([]);
+      setError(
+        "No se pudieron cargar las ubicaciones del almacén. Verifica la conexión con el servidor."
+      );
+    }
   }
-}
-
 
   useEffect(() => {
     cargarDatos();
