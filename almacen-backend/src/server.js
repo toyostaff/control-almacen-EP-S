@@ -6,11 +6,18 @@ import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 
 import { config } from "./config/env.js";
+
 import {
   comprobarConexion,
   cerrarConexion,
 } from "./config/db.js";
 
+// Inicialización automática de ubicaciones.
+import {
+  inicializarUbicaciones,
+} from "./config/ubicaciones.seed.js";
+
+// Rutas del sistema.
 import authRoutes from "./routes/auth.routes.js";
 import catalogoRoutes from "./routes/catalogo.routes.js";
 import inventarioRoutes from "./routes/inventario.routes.js";
@@ -135,8 +142,8 @@ app.use((req, res, next) => {
 
   const origin = req.headers.origin;
 
-  // Las solicitudes de servidor a servidor pueden
-  // no incluir Origin.
+  // Las solicitudes de servidor a servidor
+  // pueden no incluir Origin.
   if (!origin) {
     return next();
   }
@@ -319,34 +326,82 @@ let cerrando = false;
 
 async function iniciarServidor() {
   try {
-    console.log("Iniciando API Control de Almacén...");
 
+    console.log("=================================");
+    console.log("INICIANDO API CONTROL DE ALMACÉN");
+    console.log("=================================");
+
+    // 1. Comprobar conexión con MySQL.
     await comprobarConexion();
 
     console.log("MySQL conectado correctamente.");
 
+    // 2. Inicializar las ubicaciones del almacén.
+    console.log("Verificando ubicaciones del almacén...");
+
+    const resultadoUbicaciones =
+      await inicializarUbicaciones();
+
+    console.log(
+      `Ubicaciones verificadas: ${resultadoUbicaciones.ubicaciones}`
+    );
+
+    console.log(
+      `Subdivisiones verificadas: ${resultadoUbicaciones.subdivisiones}`
+    );
+
+    console.log("Ubicaciones inicializadas correctamente.");
+
+    // 3. Iniciar servidor después de completar
+    // la inicialización de la base de datos.
     servidor = app.listen(config.port, () => {
+
+      console.log("=================================");
+      console.log("API CONTROL DE ALMACÉN OPERATIVA");
+      console.log("=================================");
+
       console.log(
         `API escuchando en el puerto ${config.port}`
       );
 
       console.log(`Entorno: ${config.nodeEnv}`);
-      console.log("Autenticación mediante cookies HttpOnly.");
-      console.log("CORS con credenciales habilitado.");
+
+      console.log(
+        "Autenticación mediante cookies HttpOnly."
+      );
+
+      console.log(
+        "CORS con credenciales habilitado."
+      );
+
+      console.log(
+        "Base de datos MySQL conectada."
+      );
+
+      console.log(
+        "Distribución física del almacén verificada."
+      );
+
     });
 
     servidor.on("error", (error) => {
+
       console.error(
         "Error iniciando el servidor:",
         error.message
       );
 
       process.exitCode = 1;
+
       cerrarServidor("SERVER_ERROR");
     });
 
   } catch (error) {
-    console.error("No se pudo iniciar el servidor.");
+
+    console.error(
+      "No se pudo iniciar el servidor."
+    );
+
     console.error(error.message);
 
     console.error(
@@ -356,6 +411,7 @@ async function iniciarServidor() {
     process.exitCode = 1;
 
     await cerrarConexion().catch(() => {});
+
     process.exit(1);
   }
 }
@@ -365,6 +421,7 @@ async function iniciarServidor() {
 // =============================================
 
 async function cerrarServidor(signal) {
+
   if (cerrando) return;
 
   cerrando = true;
@@ -374,24 +431,35 @@ async function cerrarServidor(signal) {
   );
 
   try {
+
     if (servidor) {
+
       await new Promise((resolve, reject) => {
+
         servidor.close((error) => {
+
           if (error) {
             reject(error);
           } else {
             resolve();
           }
+
         });
+
       });
+
     }
 
     await cerrarConexion();
 
-    console.log("Servidor cerrado correctamente.");
+    console.log(
+      "Servidor cerrado correctamente."
+    );
+
     process.exit(0);
 
   } catch (error) {
+
     console.error(
       "Error durante el cierre:",
       error.message
