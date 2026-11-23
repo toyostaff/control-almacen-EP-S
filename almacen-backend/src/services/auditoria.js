@@ -6,6 +6,7 @@ export async function registrarEvento(
     accion,
     descripcion,
     referencia = "",
+    usuarioId = null,
     usuario = "Sistema",
   }
 ) {
@@ -15,13 +16,15 @@ export async function registrarEvento(
       accion,
       descripcion,
       referencia,
+      usuario_id,
       usuario_nombre
-    ) VALUES (?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?)`,
     [
       modulo,
       accion,
       descripcion,
       referencia,
+      usuarioId,
       usuario,
     ]
   );
