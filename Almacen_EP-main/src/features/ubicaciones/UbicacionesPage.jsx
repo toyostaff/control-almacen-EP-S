@@ -923,7 +923,7 @@ function UbicacionesPage() {
                   <div>
                     <h3>Distribución interna</h3>
 
-                    <p>Organización de la jaba · 3 columnas Á— 2 filas</p>
+                    <p>Organización de la jaba · 3 columnas × 2 filas</p>
                   </div>
 
                   <span>
