@@ -1,10 +1,10 @@
 
 import { obtenerInventario } from "./inventarioService";
-import { ubicacionesAlmacen } from "../data/ubicaciones";
+import { obtenerUbicaciones } from "./ubicacionesService";
 
-/* =========================================
-   CONFIGURACIÓN DE BÚSQUEDA
-========================================= */
+// =============================================
+// CONFIGURACIÓN DE BÚSQUEDA
+// =============================================
 
 const PALABRAS_IGNORADAS = [
   "necesito",
@@ -19,7 +19,8 @@ const PALABRAS_IGNORADAS = [
   "ubicacion",
   "localiza",
   "encontrar",
-  "por favor",
+  "por",
+  "favor",
   "el",
   "la",
   "los",
@@ -28,8 +29,6 @@ const PALABRAS_IGNORADAS = [
   "una",
   "de",
   "del",
-  "por",
-  "favor",
   "hay",
   "tienes",
   "tienen",
@@ -37,11 +36,12 @@ const PALABRAS_IGNORADAS = [
   "puedes",
   "indica",
   "repuesto",
+  "material",
 ];
 
-/* =========================================
-   NORMALIZAR TEXTO
-========================================= */
+// =============================================
+// NORMALIZAR TEXTO
+// =============================================
 
 export function normalizarTexto(texto = "") {
   return String(texto)
@@ -53,31 +53,82 @@ export function normalizarTexto(texto = "") {
     .trim();
 }
 
-/* =========================================
-   LIMPIAR CONSULTA DE VOZ
-========================================= */
+// =============================================
+// LIMPIAR CONSULTA DE VOZ
+// =============================================
 
 export function limpiarConsultaVoz(consulta = "") {
-  let texto = normalizarTexto(consulta);
+  const texto = normalizarTexto(consulta);
 
-  const palabras = texto
+  return texto
     .split(" ")
     .filter(
       (palabra) =>
         palabra &&
         !PALABRAS_IGNORADAS.includes(palabra)
-    );
-
-  return palabras.join(" ").trim();
+    )
+    .join(" ")
+    .trim();
 }
 
-/* =========================================
-   OBTENER INFORMACIÓN DE UBICACIÓN
-========================================= */
+// =============================================
+// EXTRAER DATOS DE LA RESPUESTA API
+// =============================================
 
-function obtenerDatosUbicacion(registro) {
-  const ubicacion = ubicacionesAlmacen.find(
-    (item) => item.nombre === registro.ubicacion
+function extraerLista(respuesta, nombre) {
+  if (Array.isArray(respuesta)) {
+    return respuesta;
+  }
+
+  if (Array.isArray(respuesta?.data)) {
+    return respuesta.data;
+  }
+
+  throw new Error(
+    `La API no devolvió una lista válida de ${nombre}.`
+  );
+}
+
+// =============================================
+// CONSULTAR INFORMACIÓN DESDE RAILWAY
+// =============================================
+
+async function obtenerDatosAlmacen() {
+  const [respuestaInventario, respuestaUbicaciones] =
+    await Promise.all([
+      obtenerInventario(),
+      obtenerUbicaciones(),
+    ]);
+
+  const inventario = extraerLista(
+    respuestaInventario,
+    "inventario"
+  );
+
+  const ubicaciones = extraerLista(
+    respuestaUbicaciones,
+    "ubicaciones"
+  );
+
+  return {
+    inventario,
+    ubicaciones,
+  };
+}
+
+// =============================================
+// OBTENER INFORMACIÓN DE UBICACIÓN
+// =============================================
+
+function obtenerDatosUbicacion(registro, ubicaciones) {
+  const codigoUbicacion = String(
+    registro.ubicacion || ""
+  ).trim();
+
+  const ubicacion = ubicaciones.find(
+    (item) =>
+      String(item.id || item.nombre).trim() ===
+      codigoUbicacion
   );
 
   if (!ubicacion) {
@@ -86,9 +137,15 @@ function obtenerDatosUbicacion(registro) {
 
   let subdivision = null;
 
-  if (registro.subdivision) {
-    subdivision = ubicacion.subdivisiones.find(
-      (item) => item.id === registro.subdivision
+  const codigoSubdivision = String(
+    registro.subdivision || ""
+  ).trim();
+
+  if (codigoSubdivision) {
+    subdivision = (ubicacion.subdivisiones || []).find(
+      (item) =>
+        String(item.id || "").trim() ===
+        codigoSubdivision
     );
 
     if (!subdivision) {
@@ -98,34 +155,42 @@ function obtenerDatosUbicacion(registro) {
 
   return {
     estante: ubicacion.estante,
-    piso: ubicacion.piso,
-    columna: ubicacion.columna,
-    codigo: ubicacion.nombre,
+    piso: Number(ubicacion.piso),
+    columna: Number(ubicacion.columna),
+    codigo: ubicacion.nombre || ubicacion.id,
 
-    tieneSubdivisiones: ubicacion.tieneSubdivisiones,
+    tieneSubdivisiones: Boolean(
+      ubicacion.tieneSubdivisiones
+    ),
 
     subdivision: subdivision
       ? {
           id: subdivision.id,
           nombre: subdivision.nombre,
-          fila: subdivision.fila,
-          columna: subdivision.columna,
+          fila: Number(subdivision.fila),
+          columna: Number(subdivision.columna),
+          ocupada: Boolean(subdivision.ocupada),
         }
       : null,
   };
 }
 
-/* =========================================
-   GENERAR RESPUESTA HABLADA
-========================================= */
+// =============================================
+// GENERAR RESPUESTA HABLADA
+// =============================================
 
-export function generarRespuestaUbicacion(registro, ubicacion) {
+export function generarRespuestaUbicacion(
+  registro,
+  ubicacion
+) {
   const nombreRepuesto =
     registro.descripcion || registro.sku || "El repuesto";
 
   let respuesta =
-    `${nombreRepuesto} se encuentra en el estante ${ubicacion.estante}, ` +
-    `piso ${ubicacion.piso}, columna ${ubicacion.columna}`;
+    `${nombreRepuesto} se encuentra en el ` +
+    `estante ${ubicacion.estante}, ` +
+    `piso ${ubicacion.piso}, ` +
+    `columna ${ubicacion.columna}`;
 
   if (ubicacion.subdivision) {
     respuesta +=
@@ -137,9 +202,9 @@ export function generarRespuestaUbicacion(registro, ubicacion) {
   return respuesta + ".";
 }
 
-/* =========================================
-   CALCULAR COINCIDENCIA
-========================================= */
+// =============================================
+// CALCULAR COINCIDENCIA
+// =============================================
 
 function calcularCoincidencia(consulta, registro) {
   const campos = [
@@ -189,35 +254,45 @@ function calcularCoincidencia(consulta, registro) {
   return mejorPuntuacion;
 }
 
-/* =========================================
-   BUSCAR REPUESTO EN INVENTARIO
-========================================= */
+// =============================================
+// BUSCAR REPUESTO EN INVENTARIO DE RAILWAY
+// =============================================
 
-export function buscarRepuestoPorVoz(consultaOriginal) {
+export async function buscarRepuestoPorVoz(
+  consultaOriginal
+) {
   const consulta = limpiarConsultaVoz(consultaOriginal);
 
   if (!consulta) {
     return {
       encontrado: false,
-      respuesta: "Por favor, indica el nombre del repuesto que necesitas.",
+      respuesta:
+        "Por favor, indica el nombre del repuesto que necesitas.",
       registro: null,
       ubicacion: null,
     };
   }
 
-  const inventario = obtenerInventario();
+  // Consultar inventario y ubicaciones reales.
+  const {
+    inventario,
+    ubicaciones,
+  } = await obtenerDatosAlmacen();
 
-  // Solo se consideran registros activos.
+  // Considerar únicamente registros activos.
   const registrosActivos = inventario.filter(
     (registro) => registro.estado === "Activo"
   );
 
-  // Calcular coincidencias y conservar su orden original.
+  // Calcular coincidencias.
   const resultados = registrosActivos
     .map((registro, index) => ({
       registro,
       index,
-      puntuacion: calcularCoincidencia(consulta, registro),
+      puntuacion: calcularCoincidencia(
+        consulta,
+        registro
+      ),
     }))
     .filter((resultado) => resultado.puntuacion > 0)
     .sort(
@@ -229,30 +304,38 @@ export function buscarRepuestoPorVoz(consultaOriginal) {
   if (resultados.length === 0) {
     return {
       encontrado: false,
-      respuesta: "No se encuentra el repuesto que estás buscando.",
+      respuesta:
+        "No se encuentra el repuesto que estás buscando.",
       registro: null,
       ubicacion: null,
     };
   }
 
-  // Seleccionar automáticamente la coincidencia más exacta.
+  // Seleccionar la coincidencia más exacta.
   const registro = resultados[0].registro;
 
-  const ubicacion = obtenerDatosUbicacion(registro);
+  // Consultar su ubicación real en Railway.
+  const ubicacion = obtenerDatosUbicacion(
+    registro,
+    ubicaciones
+  );
 
   if (!ubicacion) {
     return {
       encontrado: false,
       respuesta:
         "Encontré el repuesto, pero no pude identificar su ubicación. Consulta con el personal de almacén.",
-      registro: null,
+      registro,
       ubicacion: null,
     };
   }
 
   return {
     encontrado: true,
-    respuesta: generarRespuestaUbicacion(registro, ubicacion),
+    respuesta: generarRespuestaUbicacion(
+      registro,
+      ubicacion
+    ),
     registro,
     ubicacion,
   };

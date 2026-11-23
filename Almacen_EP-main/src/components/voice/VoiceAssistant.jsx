@@ -18,9 +18,9 @@ function VoiceAssistant({ onResultado }) {
     onResultadoRef.current = onResultado;
   }, [onResultado]);
 
-  /* =====================================
-     RESPUESTA HABLADA
-  ===================================== */
+  // =====================================
+  // RESPUESTA HABLADA
+  // =====================================
 
   const hablar = (texto) => {
     if (!("speechSynthesis" in window)) return;
@@ -36,19 +36,21 @@ function VoiceAssistant({ onResultado }) {
     window.speechSynthesis.speak(respuesta);
   };
 
-  /* =====================================
-     PROCESAR CONSULTA
-  ===================================== */
+  // =====================================
+  // PROCESAR CONSULTA
+  // =====================================
 
-  const procesarConsulta = (texto) => {
+  const procesarConsulta = async (texto) => {
+    if (procesandoRef.current) return;
+
     setProcesando(true);
     procesandoRef.current = true;
 
-    setMensaje("Buscando...");
+    setMensaje("Consultando inventario...");
     setTipoMensaje("processing");
 
     try {
-      const datos = buscarRepuestoPorVoz(texto);
+      const datos = await buscarRepuestoPorVoz(texto);
 
       if (onResultadoRef.current) {
         onResultadoRef.current(datos);
@@ -63,10 +65,13 @@ function VoiceAssistant({ onResultado }) {
       hablar(datos.respuesta);
 
     } catch (error) {
-      console.error("Error en búsqueda por voz:", error);
+      console.error(
+        "Error consultando inventario:",
+        error
+      );
 
       const respuesta =
-        "Ocurrió un problema al consultar el inventario.";
+        "No pude consultar el inventario. Verifica tu conexión con el servidor.";
 
       setMensaje(respuesta);
       setTipoMensaje("error");
@@ -83,9 +88,9 @@ function VoiceAssistant({ onResultado }) {
     }
   };
 
-  /* =====================================
-     INICIALIZAR MICRÓFONO
-  ===================================== */
+  // =====================================
+  // INICIALIZAR MICRÓFONO
+  // =====================================
 
   useEffect(() => {
     const SpeechRecognition =
@@ -117,7 +122,7 @@ function VoiceAssistant({ onResultado }) {
         event.results[0][0].transcript.trim();
 
       if (texto) {
-        procesarConsulta(texto);
+        void procesarConsulta(texto);
       }
     };
 
@@ -133,11 +138,14 @@ function VoiceAssistant({ onResultado }) {
       ) {
         respuesta = "Permite el acceso al micrófono.";
       } else if (event.error === "no-speech") {
-        respuesta = "No detecté ninguna voz. Inténtalo nuevamente.";
+        respuesta =
+          "No detecté ninguna voz. Inténtalo nuevamente.";
       } else if (event.error === "network") {
-        respuesta = "Error de conexión al reconocer la voz.";
+        respuesta =
+          "Error de conexión al reconocer la voz.";
       } else if (event.error === "audio-capture") {
-        respuesta = "No se encontró un micrófono disponible.";
+        respuesta =
+          "No se encontró un micrófono disponible.";
       }
 
       setMensaje(respuesta);
@@ -168,9 +176,9 @@ function VoiceAssistant({ onResultado }) {
     };
   }, []);
 
-  /* =====================================
-     ACTIVAR MICRÓFONO
-  ===================================== */
+  // =====================================
+  // ACTIVAR MICRÓFONO
+  // =====================================
 
   const iniciarEscucha = () => {
     if (!soporteVoz || !reconocimientoRef.current) {
@@ -195,6 +203,7 @@ function VoiceAssistant({ onResultado }) {
     } catch (error) {
       activoRef.current = false;
       setEscuchando(false);
+
       setMensaje("No se pudo activar el micrófono.");
       setTipoMensaje("error");
 
@@ -202,9 +211,9 @@ function VoiceAssistant({ onResultado }) {
     }
   };
 
-  /* =====================================
-     CANCELAR ESCUCHA
-  ===================================== */
+  // =====================================
+  // CANCELAR ESCUCHA
+  // =====================================
 
   const cancelarEscucha = () => {
     activoRef.current = false;
@@ -216,9 +225,9 @@ function VoiceAssistant({ onResultado }) {
     setTipoMensaje("error");
   };
 
-  /* =====================================
-     INTERFAZ COMPACTA
-  ===================================== */
+  // =====================================
+  // INTERFAZ
+  // =====================================
 
   return (
     <div className="voice-control">
