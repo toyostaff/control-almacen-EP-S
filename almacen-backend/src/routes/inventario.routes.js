@@ -1,6 +1,5 @@
 
 import { Router } from "express";
-
 import { pool } from "../config/db.js";
 import { autenticar } from "../middleware/auth.js";
 import { registrarEvento } from "../services/auditoria.js";
@@ -54,9 +53,7 @@ function mapRow(r) {
 
 async function validar(conn, d, id = null) {
 
-  // -------------------------------------------
   // VALIDAR MATERIAL DEL CATÁLOGO
-  // -------------------------------------------
 
   const skuId = Number(d.skuId);
 
@@ -82,9 +79,7 @@ async function validar(conn, d, id = null) {
     );
   }
 
-  // -------------------------------------------
   // VALIDAR UBICACIÓN
-  // -------------------------------------------
 
   const ubicacion = String(d.ubicacion || "").trim();
 
@@ -93,7 +88,6 @@ async function validar(conn, d, id = null) {
   }
 
   // Bloquear ubicación durante la transacción.
-  // Evita asignaciones simultáneas en la misma ubicación.
 
   const [loc] = await conn.execute(
     `SELECT *
@@ -114,9 +108,7 @@ async function validar(conn, d, id = null) {
     loc[0].tiene_subdivisiones
   );
 
-  // -------------------------------------------
   // VALIDAR SUBDIVISIÓN
-  // -------------------------------------------
 
   const sub = String(d.subdivision || "").trim();
 
@@ -152,9 +144,7 @@ async function validar(conn, d, id = null) {
     }
   }
 
-  // -------------------------------------------
   // VALIDAR CÓDIGO DEL REPUESTO
-  // -------------------------------------------
 
   const codigo = String(d.codigo || "").trim();
 
@@ -190,9 +180,7 @@ async function validar(conn, d, id = null) {
     }
   }
 
-  // -------------------------------------------
   // VALIDAR CÓDIGO DE REEMPLAZO
-  // -------------------------------------------
 
   const codigoReemplazo = String(
     d.codigoReemplazo || ""
@@ -205,9 +193,7 @@ async function validar(conn, d, id = null) {
     );
   }
 
-  // -------------------------------------------
   // VALIDAR OCUPACIÓN DE UBICACIÓN
-  // -------------------------------------------
 
   let consultaOcupacion;
   let parametros;
@@ -270,6 +256,7 @@ async function validar(conn, d, id = null) {
 // =============================================
 
 async function procesarFotoNueva(dataUri) {
+
   if (!dataUri) {
     return null;
   }
@@ -292,7 +279,9 @@ async function procesarFotoNueva(dataUri) {
 // =============================================
 
 router.get("/", async (req, res, next) => {
+
   try {
+
     const [rows] = await pool.query(
       `SELECT *
        FROM inventario
@@ -314,7 +303,9 @@ router.get("/", async (req, res, next) => {
 // =============================================
 
 router.get("/:id", async (req, res, next) => {
+
   try {
+
     validarId(req.params.id);
 
     const [rows] = await pool.execute(
@@ -344,31 +335,63 @@ router.get("/:id", async (req, res, next) => {
 
 // =============================================
 // REGISTRAR NUEVO COMPONENTE
+// FOTOGRAFÍA OBLIGATORIA
 // =============================================
 
 router.post("/", async (req, res, next) => {
+
   let conn = null;
   let fotoUrl = null;
   let transaccionActiva = false;
   let confirmado = false;
 
   try {
+
     const d = req.body || {};
+
+    // -----------------------------------------
+    // RESTRICCIÓN: FOTOGRAFÍA OBLIGATORIA
+    // -----------------------------------------
+
+    if (
+      typeof d.foto !== "string" ||
+      !d.foto.trim() ||
+      !d.foto.startsWith("data:image/")
+    ) {
+      throw new HttpError(
+        400,
+        "Debes adjuntar una fotografía del repuesto para registrarlo."
+      );
+    }
+
+    // Obtener conexión
 
     conn = await pool.getConnection();
 
     await conn.beginTransaction();
     transaccionActiva = true;
 
-    // Validar información
+    // VALIDAR INFORMACIÓN
+
     const v = await validar(conn, d);
 
-    // Guardar fotografía si existe
+    // GUARDAR FOTOGRAFÍA EN CLOUDINARY
+
     fotoUrl = await procesarFotoNueva(d.foto);
 
-    // Registrar inventario.
-    // fecha_creacion es TEXT NOT NULL en MySQL.
-    // Por eso se proporciona expresamente.
+    // Verificar que Cloudinary haya devuelto URL
+
+    if (
+      typeof fotoUrl !== "string" ||
+      !fotoUrl.startsWith("https://")
+    ) {
+      throw new HttpError(
+        502,
+        "No se pudo guardar la fotografía. Intenta nuevamente."
+      );
+    }
+
+    // REGISTRAR INVENTARIO
 
     const [resultado] = await conn.execute(
       `INSERT INTO inventario (
@@ -401,7 +424,8 @@ router.post("/", async (req, res, next) => {
       ]
     );
 
-    // Registrar auditoría
+    // REGISTRAR AUDITORÍA
+
     await registrarEvento(conn, {
       modulo: "Inventario",
       accion: "Creación",
@@ -413,7 +437,10 @@ router.post("/", async (req, res, next) => {
       usuario: req.usuario.nombre,
     });
 
+    // CONFIRMAR TRANSACCIÓN
+
     await conn.commit();
+
     transaccionActiva = false;
     confirmado = true;
 
@@ -430,9 +457,14 @@ router.post("/", async (req, res, next) => {
     });
 
   } catch (error) {
+
+    // CANCELAR TRANSACCIÓN SI EXISTE ERROR
+
     if (conn && transaccionActiva) {
       await conn.rollback().catch(() => {});
     }
+
+    // ELIMINAR FOTO SI EL REGISTRO NO SE CONFIRMÓ
 
     if (fotoUrl && !confirmado) {
       await eliminarFoto(fotoUrl).catch((e) =>
@@ -446,9 +478,11 @@ router.post("/", async (req, res, next) => {
     next(error);
 
   } finally {
+
     if (conn) {
       conn.release();
     }
+
   }
 });
 
@@ -457,6 +491,7 @@ router.post("/", async (req, res, next) => {
 // =============================================
 
 router.put("/:id", async (req, res, next) => {
+
   let conn = null;
   let nuevaFoto = null;
   let fotoNuevaSubida = false;
@@ -464,6 +499,7 @@ router.put("/:id", async (req, res, next) => {
   let confirmado = false;
 
   try {
+
     validarId(req.params.id);
 
     conn = await pool.getConnection();
@@ -471,7 +507,7 @@ router.put("/:id", async (req, res, next) => {
     await conn.beginTransaction();
     transaccionActiva = true;
 
-    // Obtener registro original
+    // OBTENER REGISTRO ORIGINAL
 
     const [oldRows] = await conn.execute(
       `SELECT *
@@ -491,7 +527,7 @@ router.put("/:id", async (req, res, next) => {
     const registroAnterior = oldRows[0];
     const d = req.body || {};
 
-    // Validar datos
+    // VALIDAR DATOS
 
     const v = await validar(
       conn,
@@ -501,18 +537,19 @@ router.put("/:id", async (req, res, next) => {
 
     const fotoAnterior = registroAnterior.foto_url;
 
-    // -----------------------------------------
     // GESTIÓN DE FOTOGRAFÍAS
-    // -----------------------------------------
 
     if (d.foto === null || d.foto === "") {
+
       // El usuario decidió eliminar la fotografía.
+
       nuevaFoto = null;
 
     } else if (
       typeof d.foto === "string" &&
       d.foto.startsWith("data:image/")
     ) {
+
       // Se seleccionó una fotografía nueva.
 
       nuevaFoto = await procesarFotoNueva(d.foto);
@@ -522,19 +559,21 @@ router.put("/:id", async (req, res, next) => {
       d.foto === undefined ||
       d.foto === fotoAnterior
     ) {
+
       // Conservar fotografía anterior.
+
       nuevaFoto = fotoAnterior;
 
     } else {
+
       throw new HttpError(
         400,
         "La fotografía enviada no es válida."
       );
+
     }
 
-    // -----------------------------------------
     // ACTUALIZAR INVENTARIO
-    // -----------------------------------------
 
     await conn.execute(
       `UPDATE inventario
@@ -561,9 +600,7 @@ router.put("/:id", async (req, res, next) => {
       ]
     );
 
-    // -----------------------------------------
     // REGISTRAR AUDITORÍA
-    // -----------------------------------------
 
     await registrarEvento(conn, {
       modulo: "Inventario",
@@ -578,20 +615,21 @@ router.put("/:id", async (req, res, next) => {
     });
 
     await conn.commit();
+
     transaccionActiva = false;
     confirmado = true;
 
-    // -----------------------------------------
     // ELIMINAR FOTO ANTERIOR
-    // -----------------------------------------
 
     if (fotoAnterior && fotoAnterior !== nuevaFoto) {
+
       await eliminarFoto(fotoAnterior).catch((error) =>
         console.warn(
           "No se pudo eliminar la fotografía anterior:",
           error.message
         )
       );
+
     }
 
     const [rows] = await conn.execute(
@@ -607,28 +645,33 @@ router.put("/:id", async (req, res, next) => {
     });
 
   } catch (error) {
+
     if (conn && transaccionActiva) {
       await conn.rollback().catch(() => {});
     }
 
-    // Limpiar solamente la fotografía nueva
-    // si la transacción no se confirmó.
+    // LIMPIAR SOLAMENTE LA FOTO NUEVA
+    // SI LA TRANSACCIÓN NO SE CONFIRMÓ.
 
     if (fotoNuevaSubida && nuevaFoto && !confirmado) {
+
       await eliminarFoto(nuevaFoto).catch((e) =>
         console.warn(
           "No se pudo eliminar la fotografía nueva:",
           e.message
         )
       );
+
     }
 
     next(error);
 
   } finally {
+
     if (conn) {
       conn.release();
     }
+
   }
 });
 
@@ -637,10 +680,12 @@ router.put("/:id", async (req, res, next) => {
 // =============================================
 
 router.patch("/:id/estado", async (req, res, next) => {
+
   let conn = null;
   let transaccionActiva = false;
 
   try {
+
     validarId(req.params.id);
 
     conn = await pool.getConnection();
@@ -668,10 +713,10 @@ router.patch("/:id/estado", async (req, res, next) => {
     const nuevoEstado =
       registro.estado === "Activo" ? "Inactivo" : "Activo";
 
-    // Si se reactiva, comprobar nuevamente
-    // que el material y la ubicación estén disponibles.
+    // SI SE REACTIVA, COMPROBAR MATERIAL Y UBICACIÓN
 
     if (nuevoEstado === "Activo") {
+
       await validar(
         conn,
         {
@@ -684,9 +729,10 @@ router.patch("/:id/estado", async (req, res, next) => {
         },
         Number(req.params.id)
       );
+
     }
 
-    // Actualizar estado
+    // ACTUALIZAR ESTADO
 
     await conn.execute(
       `UPDATE inventario
@@ -701,7 +747,7 @@ router.patch("/:id/estado", async (req, res, next) => {
       ]
     );
 
-    // Registrar auditoría
+    // REGISTRAR AUDITORÍA
 
     await registrarEvento(conn, {
       modulo: "Inventario",
@@ -733,6 +779,7 @@ router.patch("/:id/estado", async (req, res, next) => {
     });
 
   } catch (error) {
+
     if (conn && transaccionActiva) {
       await conn.rollback().catch(() => {});
     }
@@ -740,9 +787,11 @@ router.patch("/:id/estado", async (req, res, next) => {
     next(error);
 
   } finally {
+
     if (conn) {
       conn.release();
     }
+
   }
 });
 
@@ -751,11 +800,13 @@ router.patch("/:id/estado", async (req, res, next) => {
 // =============================================
 
 router.delete("/:id/foto", async (req, res, next) => {
+
   let conn = null;
   let transaccionActiva = false;
   let fotoAnterior = null;
 
   try {
+
     validarId(req.params.id);
 
     conn = await pool.getConnection();
@@ -763,7 +814,7 @@ router.delete("/:id/foto", async (req, res, next) => {
     await conn.beginTransaction();
     transaccionActiva = true;
 
-    // Consultar registro
+    // CONSULTAR REGISTRO
 
     const [rows] = await conn.execute(
       `SELECT *
@@ -789,7 +840,7 @@ router.delete("/:id/foto", async (req, res, next) => {
       );
     }
 
-    // Eliminar referencia en MySQL
+    // ELIMINAR REFERENCIA EN MYSQL
 
     await conn.execute(
       `UPDATE inventario
@@ -803,7 +854,7 @@ router.delete("/:id/foto", async (req, res, next) => {
       ]
     );
 
-    // Registrar auditoría
+    // REGISTRAR AUDITORÍA
 
     await registrarEvento(conn, {
       modulo: "Inventario",
@@ -818,15 +869,17 @@ router.delete("/:id/foto", async (req, res, next) => {
     await conn.commit();
     transaccionActiva = false;
 
-    // Eliminar fotografía de Cloudinary
-    // después de confirmar MySQL.
+    // ELIMINAR FOTOGRAFÍA DE CLOUDINARY
+    // DESPUÉS DE CONFIRMAR MYSQL.
 
     let advertencia = null;
 
     try {
+
       await eliminarFoto(fotoAnterior);
 
     } catch (error) {
+
       console.warn(
         "No se pudo eliminar la fotografía de Cloudinary:",
         error.message
@@ -834,6 +887,7 @@ router.delete("/:id/foto", async (req, res, next) => {
 
       advertencia =
         "La fotografía se desvinculó del inventario, pero no se pudo eliminar del almacenamiento.";
+
     }
 
     return res.json({
@@ -843,6 +897,7 @@ router.delete("/:id/foto", async (req, res, next) => {
     });
 
   } catch (error) {
+
     if (conn && transaccionActiva) {
       await conn.rollback().catch(() => {});
     }
@@ -850,9 +905,11 @@ router.delete("/:id/foto", async (req, res, next) => {
     next(error);
 
   } finally {
+
     if (conn) {
       conn.release();
     }
+
   }
 });
 

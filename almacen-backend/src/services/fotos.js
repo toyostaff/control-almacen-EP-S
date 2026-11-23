@@ -5,10 +5,11 @@ import {
 } from "../config/cloudinary.js";
 
 import { config } from "../config/env.js";
+
 import { HttpError } from "../utils/httpError.js";
 
 // =============================================
-// CONFIGURACIÓN
+// CONFIGURACIÓN DE FOTOGRAFÍAS
 // =============================================
 
 const MAX_TAMANO_FOTO = 5 * 1024 * 1024;
@@ -21,35 +22,26 @@ const TIPOS_PERMITIDOS = [
 ];
 
 // =============================================
-// VALIDAR CLOUDINARY
+// VALIDAR CONFIGURACIÓN CLOUDINARY
 // =============================================
 
 function validarCloudinary() {
   if (!cloudinaryHabilitado) {
     throw new HttpError(
       503,
-      "Cloudinary no está configurado correctamente."
-    );
-  }
-
-  if (
-    !config.cloudinary.cloudName ||
-    !config.cloudinary.apiKey ||
-    !config.cloudinary.apiSecret
-  ) {
-    throw new HttpError(
-      503,
-      "Faltan credenciales de Cloudinary."
+      "Cloudinary no está configurado en el servidor."
     );
   }
 }
 
 // =============================================
-// EXTRAER PUBLIC ID
+// EXTRAER PUBLIC ID DE CLOUDINARY
 // =============================================
 
 function obtenerPublicId(url) {
+
   try {
+
     if (
       !url ||
       typeof url !== "string" ||
@@ -59,6 +51,9 @@ function obtenerPublicId(url) {
     }
 
     const parsedUrl = new URL(url);
+
+    // Verificar que la fotografía pertenezca
+    // a nuestra cuenta de Cloudinary.
 
     const dominioEsperado =
       `${config.cloudinary.cloudName}.res.cloudinary.com`;
@@ -75,56 +70,71 @@ function obtenerPublicId(url) {
       return null;
     }
 
+    // Obtener elementos posteriores a /upload/
     const ruta = segmentos.slice(indiceUpload + 1);
 
-    if (!ruta.length) {
+    if (ruta.length === 0) {
       return null;
     }
+
+    // Buscar la versión de Cloudinary.
+    // Ejemplo: v1730000000
 
     const indiceVersion = ruta.findIndex(
       (segmento) => /^v\d+$/.test(segmento)
     );
 
-    const partes =
+    // Si existe versión, tomar lo posterior.
+    // Si no existe, utilizar la ruta disponible.
+
+    const publicIdPartes =
       indiceVersion !== -1
         ? ruta.slice(indiceVersion + 1)
         : ruta;
 
-    if (!partes.length) {
+    if (publicIdPartes.length === 0) {
       return null;
     }
 
+    // Reconstruir public_id
     const publicId = decodeURIComponent(
-      partes.join("/")
+      publicIdPartes.join("/")
     ).replace(/\.[^.]+$/, "");
 
     return publicId || null;
 
-  } catch (error) {
-    console.error(
-      "Error obteniendo Public ID:",
-      error.message
-    );
-
+  } catch {
     return null;
   }
 }
 
 // =============================================
-// VALIDAR FOTOGRAFÍA
+// GUARDAR FOTOGRAFÍA EN CLOUDINARY
 // =============================================
 
-function validarFotografia(dataUri) {
-  if (
-    !dataUri ||
-    typeof dataUri !== "string"
-  ) {
+// Recibe un Data URI generado mediante
+// FileReader.readAsDataURL() desde React.
+//
+// Importante:
+// No elimina la fotografía anterior.
+// La eliminación se realiza después de
+// confirmar la actualización en MySQL.
+
+export async function guardarFoto(dataUri) {
+
+  if (!dataUri) {
+    return null;
+  }
+
+  // Validar formato recibido
+  if (typeof dataUri !== "string") {
     throw new HttpError(
       400,
       "La fotografía recibida no es válida."
     );
   }
 
+  // Validar estructura Data URI
   const coincidencia = dataUri.match(
     /^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/i
   );
@@ -132,139 +142,106 @@ function validarFotografia(dataUri) {
   if (!coincidencia) {
     throw new HttpError(
       400,
-      "Formato de fotografía no permitido."
+      "Formato de fotografía no permitido. Utiliza JPG, PNG o WEBP."
     );
   }
 
-  const tipo = coincidencia[1].toLowerCase();
+  const tipoImagen = coincidencia[1].toLowerCase();
 
   const contenidoBase64 = coincidencia[2];
 
-  if (!TIPOS_PERMITIDOS.includes(tipo)) {
+  if (!TIPOS_PERMITIDOS.includes(tipoImagen)) {
     throw new HttpError(
       400,
-      "Tipo de imagen no permitido."
+      "El tipo de imagen no está permitido."
     );
   }
 
-  const buffer = Buffer.from(
+  // Calcular tamaño real aproximado del archivo
+  const tamano = Buffer.from(
     contenidoBase64,
     "base64"
-  );
+  ).length;
 
-  if (!buffer.length) {
+  if (tamano === 0) {
     throw new HttpError(
       400,
       "La fotografía está vacía."
     );
   }
 
-  if (buffer.length > MAX_TAMANO_FOTO) {
+  if (tamano > MAX_TAMANO_FOTO) {
     throw new HttpError(
       413,
-      "La fotografía supera el límite de 5 MB."
+      "La fotografía supera el límite permitido de 5 MB."
     );
   }
 
-  return {
-    tipo,
-    buffer,
-  };
-}
-
-// =============================================
-// GUARDAR FOTOGRAFÍA EN CLOUDINARY
-// =============================================
-
-export async function guardarFoto(dataUri) {
-  if (!dataUri) {
-    return null;
-  }
-
+  // Verificar Cloudinary
   validarCloudinary();
 
-  const { tipo, buffer } = validarFotografia(dataUri);
-
   try {
-    console.log("--------------------------------");
-    console.log("INICIANDO CARGA DE FOTOGRAFÍA");
-    console.log("--------------------------------");
 
-    console.log("Cloudinary habilitado:", cloudinaryHabilitado);
-    console.log("Cloud Name:", config.cloudinary.cloudName);
-    console.log("Tipo de imagen:", tipo);
-    console.log("Tamaño:", buffer.length, "bytes");
-    console.log("Carpeta:", config.cloudinary.folder);
-
-    // Prueba de carga sin transformaciones adicionales.
-    // Primero verificamos que Cloudinary acepte la imagen.
-
+    // Subir fotografía
     const resultado = await cloudinary.uploader.upload(
       dataUri,
       {
         folder: config.cloudinary.folder,
+
         resource_type: "image",
-        timeout: 60000,
-        unique_filename: true,
-        overwrite: false,
+
+        transformation: [
+          {
+            width: 1200,
+            height: 1200,
+            crop: "limit",
+          },
+          {
+            quality: "auto",
+            fetch_format: "auto",
+          },
+        ],
+
       }
     );
 
-    if (!resultado || !resultado.secure_url) {
+    if (!resultado.secure_url) {
       throw new Error(
         "Cloudinary no devolvió una URL segura."
       );
     }
 
-    console.log("--------------------------------");
-    console.log("FOTOGRAFÍA GUARDADA CORRECTAMENTE");
-    console.log("Public ID:", resultado.public_id);
-    console.log("URL:", resultado.secure_url);
-    console.log("--------------------------------");
+    console.log(
+      "Fotografía almacenada correctamente en Cloudinary."
+    );
 
     return resultado.secure_url;
 
-  } catch (error) {
-    console.error("--------------------------------");
-    console.error("ERROR DETALLADO DE CLOUDINARY");
-    console.error("--------------------------------");
+} catch (error) {
 
-    console.error("Nombre:", error.name);
-    console.error("Mensaje:", error.message);
+  console.error("ERROR DETALLADO DE CLOUDINARY:", {
+    mensaje: error.message,
+    codigo: error.http_code || error.httpCode || null,
+    detalle: error.error?.message || null,
+  });
 
-    console.error(
-      "Código HTTP:",
-      error.http_code || error.httpCode || "No disponible"
-    );
-
-    console.error(
-      "Detalle:",
-      error.error?.message || "Sin detalle adicional"
-    );
-
-    console.error(
-      "Respuesta:",
-      error.response?.body || "Sin respuesta adicional"
-    );
-
-    console.error("--------------------------------");
-
-    if (error instanceof HttpError) {
-      throw error;
-    }
-
-    throw new HttpError(
-      502,
-      "No se pudo almacenar la fotografía. Revisa los registros del servidor."
-    );
+  if (error instanceof HttpError) {
+    throw error;
   }
+
+  throw new HttpError(
+    502,
+    "No se pudo almacenar la fotografía. Revisa la configuración de Cloudinary."
+  );
+}
 }
 
 // =============================================
-// ELIMINAR FOTOGRAFÍA
+// ELIMINAR FOTOGRAFÍA DE CLOUDINARY
 // =============================================
 
 export async function eliminarFoto(url) {
+
   if (!url) {
     return;
   }
@@ -274,6 +251,7 @@ export async function eliminarFoto(url) {
   const publicId = obtenerPublicId(url);
 
   if (!publicId) {
+
     console.warn(
       "No se pudo identificar la fotografía en Cloudinary."
     );
@@ -282,10 +260,6 @@ export async function eliminarFoto(url) {
   }
 
   try {
-    console.log(
-      "Eliminando fotografía:",
-      publicId
-    );
 
     const resultado = await cloudinary.uploader.destroy(
       publicId,
@@ -299,20 +273,18 @@ export async function eliminarFoto(url) {
       resultado.result !== "ok" &&
       resultado.result !== "not found"
     ) {
-      throw new Error(
-        `Cloudinary respondió: ${resultado.result}`
+      console.warn(
+        "Cloudinary no confirmó la eliminación:",
+        resultado.result
       );
     }
-
-    console.log(
-      "Fotografía eliminada correctamente."
-    );
 
     return resultado;
 
   } catch (error) {
+
     console.error(
-      "ERROR ELIMINANDO FOTOGRAFÍA:",
+      "Error eliminando fotografía de Cloudinary:",
       error.message
     );
 
@@ -320,5 +292,6 @@ export async function eliminarFoto(url) {
       502,
       "No se pudo eliminar la fotografía almacenada."
     );
+
   }
 }
