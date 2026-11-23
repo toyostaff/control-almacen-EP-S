@@ -46,6 +46,7 @@ function obtenerCookie(req, nombre) {
 export function autenticar(req, res, next) {
 
   // Verificar configuración JWT.
+
   if (!config.jwtSecret) {
     return next(
       new HttpError(
@@ -56,6 +57,7 @@ export function autenticar(req, res, next) {
   }
 
   // Obtener JWT desde la cookie HttpOnly.
+
   const token = obtenerCookie(req, COOKIE_NAME);
 
   if (!token) {
@@ -76,15 +78,17 @@ export function autenticar(req, res, next) {
       token,
       config.jwtSecret,
       {
-        algorithms: ["HS256"]
+        algorithms: ["HS256"],
       }
     );
 
     // Comprobar estructura del token.
+
     if (
       !payload ||
       typeof payload !== "object" ||
-      !payload.sub ||
+      payload.sub === undefined ||
+      payload.sub === null ||
       !payload.nombre ||
       !["admin", "almacen"].includes(payload.rol)
     ) {
@@ -92,15 +96,18 @@ export function autenticar(req, res, next) {
     }
 
     // Guardar usuario autenticado en la petición.
+
     req.usuario = {
       sub: payload.sub,
       nombre: payload.nombre,
-      rol: payload.rol
+      rol: payload.rol,
     };
 
     return next();
 
   } catch (error) {
+
+    // Token vencido, inválido o manipulado.
 
     return next(
       new HttpError(
