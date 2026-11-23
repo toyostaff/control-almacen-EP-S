@@ -49,7 +49,35 @@ function normalizarTexto(texto) {
     .trim();
 }
 
-async function cargarDatos() {
+function InventarioPage() {
+  // ==========================================
+  // ESTADOS DEL COMPONENTE
+  // ==========================================
+
+  const [inventario, setInventario] = useState([]);
+  const [catalogo, setCatalogo] = useState([]);
+  const [ubicaciones, setUbicaciones] = useState([]);
+
+  const [formulario, setFormulario] = useState({ ...formularioInicial });
+  const [busqueda, setBusqueda] = useState("");
+  const [busquedaMaterial, setBusquedaMaterial] = useState("");
+
+  const [mostrarResultados, setMostrarResultados] = useState(false);
+  const [ubicacionMenuAbierto, setUbicacionMenuAbierto] = useState(false);
+  const [subdivisionMenuAbierto, setSubdivisionMenuAbierto] = useState(false);
+
+  const [error, setError] = useState("");
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [registroEditando, setRegistroEditando] = useState(null);
+
+  const galeriaInputRef = useRef(null);
+  const camaraInputRef = useRef(null);
+
+  // ==========================================
+  // CARGA DE DATOS
+  // ==========================================
+
+  async function cargarDatos() {
   try {
     const [registros, materiales, espacios] = await Promise.all([
       obtenerInventario(),
