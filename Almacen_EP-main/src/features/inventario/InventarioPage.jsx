@@ -49,64 +49,83 @@ function normalizarTexto(texto) {
     .trim();
 }
 
-function InventarioPage() {
-  const [inventario, setInventario] = useState([]);
-  const [catalogo, setCatalogo] = useState([]);
-  const [ubicaciones, setUbicaciones] = useState([]);
-  const [busqueda, setBusqueda] = useState("");
-  const [busquedaMaterial, setBusquedaMaterial] = useState("");
-  const [mostrarResultados, setMostrarResultados] = useState(false);
+async function cargarDatos() {
+  try {
+    const [registros, materiales, espacios] = await Promise.all([
+      obtenerInventario(),
+      obtenerCatalogo(),
+      obtenerUbicaciones(),
+    ]);
 
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [ubicacionMenuAbierto, setUbicacionMenuAbierto] = useState(false);
-  const [subdivisionMenuAbierto, setSubdivisionMenuAbierto] = useState(false);
+    const listaInventario = Array.isArray(registros)
+      ? registros
+      : Array.isArray(registros?.data)
+        ? registros.data
+        : [];
 
-  const [registroEditando, setRegistroEditando] = useState(null);
-  const [formulario, setFormulario] = useState(formularioInicial);
-  const [error, setError] = useState("");
+    const listaCatalogo = Array.isArray(materiales)
+      ? materiales
+      : Array.isArray(materiales?.data)
+        ? materiales.data
+        : [];
 
-  const galeriaInputRef = useRef(null);
-  const camaraInputRef = useRef(null);
+    const listaUbicaciones = Array.isArray(espacios)
+      ? espacios
+      : Array.isArray(espacios?.data)
+        ? espacios.data
+        : [];
 
-  // CARGA DE DATOS DESDE RAILWAY
-  async function cargarDatos() {
-    try {
-      const [registros, materiales, espacios] = await Promise.all([
-        obtenerInventario(),
-        obtenerCatalogo(),
-        obtenerUbicaciones(),
-      ]);
+    setInventario(listaInventario);
 
-      setInventario(Array.isArray(registros) ? registros : []);
+    setCatalogo(
+      listaCatalogo.filter(
+        (material) => material.estado === "Activo"
+      )
+    );
 
-      setCatalogo(
-        (Array.isArray(materiales) ? materiales : []).filter(
-          (material) => material.estado === "Activo",
-        ),
-      );
-
-      // Las ubicaciones se obtienen del backend; no se usa una lista local.
-      const ubicacionesNormalizadas = (
-        Array.isArray(espacios) ? espacios : []
-      ).map((ubicacion) => ({
+    const ubicacionesNormalizadas = listaUbicaciones.map(
+      (ubicacion) => ({
         ...ubicacion,
+
         id: String(ubicacion.id),
-        nombre: String(ubicacion.nombre ?? ubicacion.id),
-        tieneSubdivisiones: Boolean(ubicacion.tieneSubdivisiones),
-        subdivisiones: (Array.isArray(ubicacion.subdivisiones)
-          ? ubicacion.subdivisiones
-          : []
+
+        nombre: String(
+          ubicacion.nombre ?? ubicacion.id
+        ),
+
+        tieneSubdivisiones:
+          ubicacion.tieneSubdivisiones === true ||
+          ubicacion.tieneSubdivisiones === 1 ||
+          ubicacion.tieneSubdivisiones === "1",
+
+        subdivisiones: (
+          Array.isArray(ubicacion.subdivisiones)
+            ? ubicacion.subdivisiones
+            : []
         ).map((division) => ({
           ...division,
           id: String(division.id ?? division.codigo),
         })),
-      }));
+      })
+    );
 
-      setUbicaciones(ubicacionesNormalizadas);
-    } catch (err) {
-      setError(err.message || "No se pudieron cargar los datos del almacén.");
-    }
+    setUbicaciones(ubicacionesNormalizadas);
+
+    console.log(
+      "Ubicaciones cargadas:",
+      ubicacionesNormalizadas.length
+    );
+
+  } catch (err) {
+    console.error("Error cargando inventario:", err);
+
+    setError(
+      err.message ||
+      "No se pudieron cargar los datos del almacén."
+    );
   }
+}
+
 
   useEffect(() => {
     cargarDatos();
