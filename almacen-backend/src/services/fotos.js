@@ -217,23 +217,23 @@ export async function guardarFoto(dataUri) {
 
     return resultado.secure_url;
 
-  } catch (error) {
+} catch (error) {
 
-    console.error(
-      "Error subiendo fotografía:",
-      error.message
-    );
+  console.error("ERROR DETALLADO DE CLOUDINARY:", {
+    mensaje: error.message,
+    codigo: error.http_code || error.httpCode || null,
+    detalle: error.error?.message || null,
+  });
 
-    if (error instanceof HttpError) {
-      throw error;
-    }
-
-    throw new HttpError(
-      502,
-      "No se pudo almacenar la fotografía. Intenta nuevamente."
-    );
-
+  if (error instanceof HttpError) {
+    throw error;
   }
+
+  throw new HttpError(
+    502,
+    "No se pudo almacenar la fotografía. Revisa la configuración de Cloudinary."
+  );
+}
 }
 
 // =============================================
