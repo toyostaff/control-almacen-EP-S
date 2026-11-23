@@ -607,3 +607,275 @@
     justify-content: space-evenly;
   }
 }
+
+
+
+/* =============================================
+   ACTUALIZACIÓN DEL DASHBOARD
+============================================= */
+
+.dashboard-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 15px;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 9px;
+  background: white;
+  color: var(--color-text, #222);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.dashboard-refresh:hover {
+  border-color: #dc171c;
+  color: #dc171c;
+}
+
+.dashboard-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dashboard-spinning {
+  animation: dashboard-spin 1s linear infinite;
+}
+
+@keyframes dashboard-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =============================================
+   MENSAJES
+============================================= */
+
+.dashboard-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  margin-bottom: 18px;
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+  background: #fff1f2;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+/* =============================================
+   DISTRIBUCIÓN FÍSICA
+============================================= */
+
+.dashboard-map {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.dashboard-map-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 13px;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.dashboard-map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-rack {
+  padding: 13px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+}
+
+.dashboard-rack-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+  color: #222;
+  font-size: 12px;
+}
+
+.dashboard-rack-heading svg {
+  color: #dc171c;
+}
+
+.dashboard-floor {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+.dashboard-floor:last-child {
+  border-bottom: none;
+}
+
+.dashboard-floor-label {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.dashboard-location-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.dashboard-location {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 76px;
+  padding: 8px 4px;
+  border: 1px solid;
+  border-radius: 8px;
+  text-align: center;
+  transition: 0.2s ease;
+}
+
+.dashboard-location strong {
+  font-size: 11px;
+}
+
+.dashboard-location small {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dashboard-location span {
+  font-size: 9px;
+}
+
+.dashboard-location.is-available {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.dashboard-location.is-occupied {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #dc171c;
+}
+
+/* =============================================
+   GRÁFICO DE OCUPACIÓN
+============================================= */
+
+.dashboard-donut {
+  display: grid;
+  place-items: center;
+  width: 115px;
+  height: 115px;
+  border-radius: 50%;
+}
+
+.dashboard-donut-center {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: white;
+}
+
+.dashboard-donut-center strong {
+  font-size: 20px;
+  color: #171717;
+}
+
+.dashboard-occupancy-footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-top: 14px;
+  margin-top: 15px;
+  border-top: 1px solid #eee;
+  color: #64748b;
+  font-size: 10px;
+}
+
+.dashboard-occupancy-footer svg {
+  color: #16a34a;
+  flex-shrink: 0;
+}
+
+/* =============================================
+   RESPONSIVE
+============================================= */
+
+@media (max-width: 768px) {
+
+  .dashboard-heading {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .dashboard-refresh {
+    padding: 9px;
+    font-size: 0;
+  }
+
+  .dashboard-refresh svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .dashboard-map {
+    padding: 10px;
+  }
+
+  .dashboard-rack {
+    padding: 9px;
+  }
+
+  .dashboard-floor {
+    grid-template-columns: 48px 1fr;
+    gap: 5px;
+  }
+
+  .dashboard-location-grid {
+    gap: 4px;
+  }
+
+  .dashboard-location {
+    min-height: 67px;
+    padding: 5px 2px;
+  }
+
+  .dashboard-location strong {
+    font-size: 9px;
+  }
+
+  .dashboard-location small,
+  .dashboard-location span {
+    font-size: 8px;
+  }
+
+}
+
+
