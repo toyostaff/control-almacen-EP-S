@@ -1,6 +1,10 @@
 
 import { useEffect, useRef, useState } from "react";
-import { buscarRepuestoPorVoz } from "../../services/vozService";
+
+import {
+  buscarRepuestoPorVoz,
+  seleccionarOpcionRepuesto
+} from "../../services/vozService";
 
 function VoiceAssistant({ onResultado }) {
   const [escuchando, setEscuchando] = useState(false);
@@ -8,6 +12,7 @@ function VoiceAssistant({ onResultado }) {
   const [soporteVoz, setSoporteVoz] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [tipoMensaje, setTipoMensaje] = useState("");
+  const [opciones, setOpciones] = useState([]);
 
   const reconocimientoRef = useRef(null);
   const activoRef = useRef(false);
@@ -45,6 +50,7 @@ function VoiceAssistant({ onResultado }) {
 
     setProcesando(true);
     procesandoRef.current = true;
+    setOpciones([]);
 
     setMensaje("Consultando inventario...");
     setTipoMensaje("processing");
@@ -52,16 +58,26 @@ function VoiceAssistant({ onResultado }) {
     try {
       const datos = await buscarRepuestoPorVoz(texto);
 
-      if (onResultadoRef.current) {
-        onResultadoRef.current(datos);
+      if (datos.requiereSeleccion) {
+        setOpciones(datos.opciones || []);
+        setMensaje(datos.respuesta);
+        setTipoMensaje("options");
+
+        // Limpiar ubicación anterior.
+        onResultadoRef.current?.(null);
+
+        hablar(datos.respuesta);
+        return;
       }
 
+      setOpciones([]);
       setMensaje(datos.respuesta);
 
       setTipoMensaje(
         datos.encontrado ? "success" : "error"
       );
 
+      onResultadoRef.current?.(datos);
       hablar(datos.respuesta);
 
     } catch (error) {
@@ -73,19 +89,35 @@ function VoiceAssistant({ onResultado }) {
       const respuesta =
         "No pude consultar el inventario. Verifica tu conexión con el servidor.";
 
+      setOpciones([]);
       setMensaje(respuesta);
       setTipoMensaje("error");
 
-      if (onResultadoRef.current) {
-        onResultadoRef.current(null);
-      }
-
+      onResultadoRef.current?.(null);
       hablar(respuesta);
 
     } finally {
       setProcesando(false);
       procesandoRef.current = false;
     }
+  };
+
+  // =====================================
+  // SELECCIONAR MATERIAL
+  // =====================================
+
+  const seleccionarMaterial = (opcion) => {
+    const resultado = seleccionarOpcionRepuesto(opcion);
+
+    setOpciones([]);
+    setMensaje(resultado.respuesta);
+
+    setTipoMensaje(
+      resultado.encontrado ? "success" : "error"
+    );
+
+    onResultadoRef.current?.(resultado);
+    hablar(resultado.respuesta);
   };
 
   // =====================================
@@ -115,6 +147,7 @@ function VoiceAssistant({ onResultado }) {
       setEscuchando(true);
       setMensaje("Te escucho...");
       setTipoMensaje("listening");
+      setOpciones([]);
     };
 
     reconocimiento.onresult = (event) => {
@@ -193,6 +226,9 @@ function VoiceAssistant({ onResultado }) {
 
     window.speechSynthesis?.cancel();
 
+    setOpciones([]);
+    onResultadoRef.current?.(null);
+
     activoRef.current = true;
 
     setMensaje("Preparando micrófono...");
@@ -221,6 +257,7 @@ function VoiceAssistant({ onResultado }) {
     reconocimientoRef.current?.abort();
 
     setEscuchando(false);
+    setOpciones([]);
     setMensaje("Consulta cancelada.");
     setTipoMensaje("error");
   };
@@ -260,7 +297,13 @@ function VoiceAssistant({ onResultado }) {
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <rect
+            x="9"
+            y="2"
+            width="6"
+            height="12"
+            rx="3"
+          />
           <path d="M5 10a7 7 0 0 0 14 0" />
           <path d="M12 17v5" />
           <path d="M8 22h8" />
@@ -282,6 +325,40 @@ function VoiceAssistant({ onResultado }) {
           )}
 
           <span>{mensaje}</span>
+        </div>
+      )}
+
+      {/* OPCIONES DE MATERIALES */}
+
+      {opciones.length > 0 && (
+        <div className="voice-search-options">
+
+          <p className="voice-search-options-title">
+            Selecciona el material que necesitas:
+          </p>
+
+          {opciones.map((opcion) => (
+            <button
+              key={opcion.registro.sku || opcion.registro.id}
+              type="button"
+              className="voice-search-option"
+              onClick={() => seleccionarMaterial(opcion)}
+              disabled={procesando}
+            >
+              <span className="voice-search-option-info">
+                <strong>
+                  {opcion.registro.descripcion}
+                </strong>
+
+                <small>
+                  {opcion.registro.sku || "Sin SKU"}
+                </small>
+              </span>
+
+              <span aria-hidden="true">›</span>
+            </button>
+          ))}
+
         </div>
       )}
 
