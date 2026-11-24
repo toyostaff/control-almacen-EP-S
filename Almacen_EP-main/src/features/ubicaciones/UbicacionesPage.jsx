@@ -64,6 +64,8 @@ function UbicacionesPage() {
   const [ubicacionResaltada, setUbicacionResaltada] = useState(null);
 
   const [subdivisionResaltada, setSubdivisionResaltada] = useState(null);
+  const [localizacionVersion, setLocalizacionVersion] = useState(0);
+
 
   // Referencias de las jabas físicas
 
@@ -293,24 +295,25 @@ function UbicacionesPage() {
 
   // ===================================================
 
-  function localizarRepuesto(registro) {
-    if (!registro?.ubicacion) return;
 
-    const ubicacion = obtenerUbicacion(registro.ubicacion);
+function localizarRepuesto(registro) {
+  if (!registro?.ubicacion) return;
 
-    if (!ubicacion) return;
+  const ubicacion = obtenerUbicacion(registro.ubicacion);
 
-    setUbicacionResaltada(registro.ubicacion);
+  if (!ubicacion) return;
 
-    setSubdivisionResaltada(registro.subdivision || null);
+  // Actualizar ubicación y división exacta.
+  setUbicacionResaltada(registro.ubicacion);
+  setSubdivisionResaltada(registro.subdivision || null);
 
-    // Cerrar cualquier detalle abierto
+  // Cerrar cualquier detalle abierto.
+  setUbicacionSeleccionada(null);
 
-    setUbicacionSeleccionada(null);
-
-    // Mantener el resultado seleccionado mientras se localiza.
-    // La ubicación se desplazará automáticamente mediante useEffect.
-  }
+  // Forzar una nueva localización en cada selección,
+  // incluso cuando sea la misma ubicación.
+  setLocalizacionVersion((version) => version + 1);
+}
 
   // ===================================================
 
@@ -342,25 +345,30 @@ function UbicacionesPage() {
 
   // ===================================================
 
-  useEffect(() => {
-    if (!ubicacionResaltada) return;
 
-    const temporizador = setTimeout(() => {
-      const elemento = ubicacionesRefs.current[ubicacionResaltada];
+useEffect(() => {
+  if (!ubicacionResaltada) return;
 
-      if (elemento) {
-        elemento.scrollIntoView({
-          behavior: "smooth",
+  const temporizador = setTimeout(() => {
+    const elemento =
+      ubicacionesRefs.current[ubicacionResaltada];
 
-          block: "center",
+    if (elemento) {
+      elemento.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "center",
+      });
+    }
+  }, 150);
 
-          inline: "center",
-        });
-      }
-    }, 150);
+  return () => clearTimeout(temporizador);
 
-    return () => clearTimeout(temporizador);
-  }, [ubicacionResaltada]);
+}, [
+  ubicacionResaltada,
+  subdivisionResaltada,
+  localizacionVersion
+]);
 
   // ===================================================
 
