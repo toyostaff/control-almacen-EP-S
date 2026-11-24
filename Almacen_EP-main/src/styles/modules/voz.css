@@ -699,3 +699,40 @@
     padding: 12px;
   }
 }
+
+/* empieza
+
+
+
+/* =====================================
+   BOTON X - CANCELAR BUSQUEDA POR VOZ
+===================================== */
+
+.voice-cancel-button {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+
+  display: grid;
+  place-items: center;
+
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+
+  background: #fff1f1;
+  color: #dc1717;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.voice-cancel-button:hover {
+  background: #dc1717;
+  color: #ffffff;
+  border-color: #dc1717;
+}
+
+.voice-cancel-button:focus-visible {
+  outline: 3px solid #fecaca;
+  outline-offset: 3px;
+}
