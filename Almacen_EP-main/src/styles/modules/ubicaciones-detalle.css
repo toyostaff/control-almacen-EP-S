@@ -715,3 +715,56 @@
   }
 }
     
+/* aqui otro 
+
+
+
+/* =========================================
+   RESALTAR COMPONENTES ENCONTRADOS
+========================================= */
+
+.location-material-card.component-material-found {
+  border: 2px solid #dc1717 !important;
+  background: #fff1f1 !important;
+  animation: component-found-pulse 1s ease-in-out 4;
+  scroll-margin-top: 100px;
+}
+
+/* Resaltar componentes de una división seleccionada */
+
+.location-material-card.component-division-target {
+  border: 2px solid #f59e0b;
+  background: #fffbeb;
+  scroll-margin-top: 100px;
+}
+
+@keyframes component-found-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 23, 23, 0);
+    background: #fff1f1;
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(220, 23, 23, 0.18);
+    background: #fee2e2;
+  }
+}
+
+/* Indicar que las divisiones son seleccionables */
+
+.location-division {
+  cursor: pointer;
+  scroll-margin-top: 100px;
+}
+
+.location-division:focus-visible {
+  outline: 3px solid #dc1717;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .location-material-card.component-material-found {
+    animation: none;
+  }
+}
+

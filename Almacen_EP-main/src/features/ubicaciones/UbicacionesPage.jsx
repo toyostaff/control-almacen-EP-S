@@ -64,12 +64,21 @@ function UbicacionesPage() {
   const [ubicacionResaltada, setUbicacionResaltada] = useState(null);
 
   const [subdivisionResaltada, setSubdivisionResaltada] = useState(null);
-  const [localizacionVersion, setLocalizacionVersion] = useState(0);
 
+  // Componente exacto que se debe resaltar.
+  const [componenteResaltado, setComponenteResaltado] = useState(null);
+
+  const [divisionActivaEnComponentes, setDivisionActivaEnComponentes] =
+    useState(null);
+
+  const [localizacionVersion, setLocalizacionVersion] = useState(0);
 
   // Referencias de las jabas físicas
 
   const ubicacionesRefs = useRef({});
+
+  // Referencias de los componentes almacenados por división.
+  const componentesDivisionRefs = useRef({});
 
   // ===================================================
 
@@ -295,25 +304,42 @@ function UbicacionesPage() {
 
   // ===================================================
 
+  function localizarRepuesto(registro) {
+    if (!registro?.ubicacion) return;
 
-function localizarRepuesto(registro) {
-  if (!registro?.ubicacion) return;
+    const ubicacion = obtenerUbicacion(registro.ubicacion);
 
-  const ubicacion = obtenerUbicacion(registro.ubicacion);
+    if (!ubicacion) return;
 
-  if (!ubicacion) return;
+    setUbicacionResaltada(registro.ubicacion);
+    setSubdivisionResaltada(registro.subdivision || null);
 
-  // Actualizar ubicación y división exacta.
-  setUbicacionResaltada(registro.ubicacion);
-  setSubdivisionResaltada(registro.subdivision || null);
+    // Identificar el repuesto exacto.
+    setComponenteResaltado(registro.id);
 
-  // Cerrar cualquier detalle abierto.
-  setUbicacionSeleccionada(null);
+    // Cerrar cualquier detalle abierto.
+    setUbicacionSeleccionada(null);
 
-  // Forzar una nueva localización en cada selección,
-  // incluso cuando sea la misma ubicación.
-  setLocalizacionVersion((version) => version + 1);
-}
+    // Forzar nueva localización.
+    setLocalizacionVersion((version) => version + 1);
+  }
+
+  function irAComponentesDivision(divisionId) {
+    if (!divisionId) return;
+
+    // Resaltar los componentes de esta división.
+    setDivisionActivaEnComponentes(divisionId);
+
+    // Buscar el primer componente de la división.
+    const elemento = componentesDivisionRefs.current[divisionId];
+
+    if (elemento) {
+      elemento.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }
 
   // ===================================================
 
@@ -345,30 +371,23 @@ function localizarRepuesto(registro) {
 
   // ===================================================
 
+  useEffect(() => {
+    if (!ubicacionResaltada) return;
 
-useEffect(() => {
-  if (!ubicacionResaltada) return;
+    const temporizador = setTimeout(() => {
+      const elemento = ubicacionesRefs.current[ubicacionResaltada];
 
-  const temporizador = setTimeout(() => {
-    const elemento =
-      ubicacionesRefs.current[ubicacionResaltada];
+      if (elemento) {
+        elemento.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "center",
+        });
+      }
+    }, 150);
 
-    if (elemento) {
-      elemento.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "center",
-      });
-    }
-  }, 150);
-
-  return () => clearTimeout(temporizador);
-
-}, [
-  ubicacionResaltada,
-  subdivisionResaltada,
-  localizacionVersion
-]);
+    return () => clearTimeout(temporizador);
+  }, [ubicacionResaltada, subdivisionResaltada, localizacionVersion]);
 
   // ===================================================
 
@@ -965,6 +984,16 @@ useEffect(() => {
                             .filter(Boolean)
 
                             .join(" ")}
+                          onClick={() => irAComponentesDivision(division.id)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              irAComponentesDivision(division.id);
+                            }
+                          }}
+                          title={`Ver componentes de ${division.id}`}
                         >
                           <span className="division-icon">
                             {encontrada ? (
@@ -1023,70 +1052,100 @@ useEffect(() => {
 
               <div className="location-material-list">
                 {ubicacionSeleccionada.registros.length > 0 ? (
-                  ubicacionSeleccionada.registros.map((registro) => (
-                    <article
-                      className="location-material-card"
-                      key={registro.id}
-                    >
-                      {registro.foto ? (
-                        <button
-                          type="button"
-                          className="location-material-photo"
-                          onClick={() =>
-                            setFotoAmpliada({
-                              src: registro.foto,
+                  ubicacionSeleccionada.registros.map((registro) => {
+                    const esComponenteBuscado =
+                      componenteResaltado === registro.id &&
+                      ubicacionResaltada === ubicacionSeleccionada.nombre;
 
-                              nombre: registro.descripcion,
-                            })
+                    const perteneceDivisionActiva =
+                      divisionActivaEnComponentes &&
+                      registro.subdivision === divisionActivaEnComponentes;
+
+                    return (
+                      <article
+                        className={[
+                          "location-material-card",
+                          esComponenteBuscado ? "component-material-found" : "",
+                          perteneceDivisionActiva
+                            ? "component-division-target"
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        key={registro.id}
+                        ref={(elemento) => {
+                          if (elemento && registro.subdivision) {
+                            componentesDivisionRefs.current[
+                              registro.subdivision
+                            ] = elemento;
                           }
-                          aria-label={`Ampliar fotografía de ${registro.descripcion}`}
-                        >
-                          <img src={registro.foto} alt={registro.descripcion} />
+                        }}
+                      >
+                        {registro.foto ? (
+                          <button
+                            type="button"
+                            className="location-material-photo"
+                            onClick={() =>
+                              setFotoAmpliada({
+                                src: registro.foto,
 
-                          <span>
-                            <Search size={15} />
-                          </span>
-                        </button>
-                      ) : (
-                        <div className="location-material-symbol">
-                          <PackageOpen size={22} />
-                        </div>
-                      )}
+                                nombre: registro.descripcion,
+                              })
+                            }
+                            aria-label={`Ampliar fotografía de ${registro.descripcion}`}
+                          >
+                            <img
+                              src={registro.foto}
+                              alt={registro.descripcion}
+                            />
 
-                      <div className="location-material-main">
-                        <strong className="location-product-name">
-                          {registro.descripcion}
-                        </strong>
-
-                        {registro.codigo && (
-                          <small>
-                            Código: <strong>{registro.codigo}</strong>
-                          </small>
-                        )}
-
-                        {registro.codigoReemplazo && (
-                          <small>
-                            Código de reemplazo:{" "}
-                            <strong>{registro.codigoReemplazo}</strong>
-                          </small>
-                        )}
-
-                        {registro.subdivision && (
-                          <div className="location-product-exact">
-                            <span>DIVISIÓN EXACTA</span>
-
-                            <strong>{registro.subdivision}</strong>
+                            <span>
+                              <Search size={15} />
+                            </span>
+                          </button>
+                        ) : (
+                          <div className="location-material-symbol">
+                            <PackageOpen size={22} />
                           </div>
                         )}
 
-                        {registro.observacion && (
-                          <small>Observación: {registro.observacion}</small>
-                        )}
-                      </div>
+                        <div className="location-material-main">
+                          <strong className="location-product-name">
+                            {registro.descripcion}
+                          </strong>
 
-                      <span className="status-badge status-active">Activo</span>
-                    </article>
-                  ))
+                          {registro.codigo && (
+                            <small>
+                              Código: <strong>{registro.codigo}</strong>
+                            </small>
+                          )}
+
+                          {registro.codigoReemplazo && (
+                            <small>
+                              Código de reemplazo:{" "}
+                              <strong>{registro.codigoReemplazo}</strong>
+                            </small>
+                          )}
+
+                          {registro.subdivision && (
+                            <div className="location-product-exact">
+                              <span>DIVISIÓN EXACTA</span>
+
+                              <strong>{registro.subdivision}</strong>
+                            </div>
+                          )}
+
+                          {registro.observacion && (
+                            <small>Observación: {registro.observacion}</small>
+                          )}
+                        </div>
+
+                        <span className="status-badge status-active">
+                          Activo
+                        </span>
+                      </article>
+                    );
+                  })
                 ) : (
                   <div className="location-empty">
                     <Package size={38} />
