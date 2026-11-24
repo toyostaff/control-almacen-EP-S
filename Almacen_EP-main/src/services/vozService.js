@@ -1,3 +1,4 @@
+
 import { obtenerInventario } from "./inventarioService";
 import { obtenerUbicaciones } from "./ubicacionesService";
 
@@ -340,10 +341,9 @@ function buscarOpcionesPorPrimeraPalabra(
   registrosActivos,
   ubicaciones
 ) {
-  const primeraPalabra =
-    normalizarComparacion(
-      consulta.split(" ")[0]
-    );
+  const primeraPalabra = normalizarComparacion(
+    consulta.split(" ")[0]
+  );
 
   if (!primeraPalabra) {
     return [];
@@ -351,10 +351,9 @@ function buscarOpcionesPorPrimeraPalabra(
 
   const coincidencias = registrosActivos.filter(
     (registro) => {
-      const descripcion =
-        normalizarComparacion(
-          registro.descripcion || ""
-        );
+      const descripcion = normalizarComparacion(
+        registro.descripcion || ""
+      );
 
       const primeraPalabraDescripcion =
         descripcion.split(" ")[0];
@@ -420,14 +419,44 @@ export async function buscarRepuestoPorVoz(
   );
 
   // ===========================================
-  // 1. BUSCAR COINCIDENCIA EXACTA
+  // 1. BUSCAR OPCIONES POR PRIMERA PALABRA
+  // ===========================================
+
+  const opciones = buscarOpcionesPorPrimeraPalabra(
+    consulta,
+    registrosActivos,
+    ubicaciones
+  );
+
+  // Si el usuario consulta una sola palabra
+  // y existen varias opciones, esperar selección.
+
+  if (
+    consulta.split(" ").length === 1 &&
+    opciones.length >= 2
+  ) {
+    return {
+      encontrado: false,
+      requiereSeleccion: true,
+
+      respuesta:
+        "Tengo estas opciones con el mismo nombre. Puedes elegir cuál estás buscando.",
+
+      registro: null,
+      ubicacion: null,
+      opciones,
+    };
+  }
+
+  // ===========================================
+  // 2. BUSCAR COINCIDENCIA EXACTA
   // ===========================================
 
   const consultaExacta =
     normalizarComparacion(consulta);
 
-  const coincidenciaExacta =
-    registrosActivos.find((registro) => {
+  const coincidenciaExacta = registrosActivos.find(
+    (registro) => {
       const campos = [
         registro.descripcion,
         registro.sku,
@@ -438,7 +467,8 @@ export async function buscarRepuestoPorVoz(
         .map(normalizarComparacion);
 
       return campos.includes(consultaExacta);
-    });
+    }
+  );
 
   // Si existe coincidencia exacta,
   // ir directamente a su ubicación.
@@ -453,30 +483,6 @@ export async function buscarRepuestoPorVoz(
       coincidenciaExacta,
       ubicacion
     );
-  }
-
-  // ===========================================
-  // 2. BUSCAR OPCIONES POR PRIMERA PALABRA
-  // ===========================================
-
-  const opciones = buscarOpcionesPorPrimeraPalabra(
-    consulta,
-    registrosActivos,
-    ubicaciones
-  );
-
-  if (opciones.length >= 2) {
-    return {
-      encontrado: false,
-      requiereSeleccion: true,
-
-      respuesta:
-        "Tengo estas opciones con el mismo nombre. Puedes elegir cuál estás buscando.",
-
-      registro: null,
-      ubicacion: null,
-      opciones,
-    };
   }
 
   // ===========================================
@@ -548,7 +554,9 @@ export async function buscarRepuesto(consulta) {
   return buscarRepuestoPorVoz(consulta);
 }
 
-export async function buscarRepuestoPorTexto(consulta) {
+export async function buscarRepuestoPorTexto(
+  consulta
+) {
   return buscarRepuestoPorVoz(consulta);
 }
 
@@ -570,6 +578,9 @@ export function seleccionarOpcionRepuesto(opcion) {
       opciones: [],
     };
   }
+
+  // La ubicación solo se devuelve después
+  // de que el usuario selecciona una opción.
 
   return construirResultado(
     opcion.registro,
