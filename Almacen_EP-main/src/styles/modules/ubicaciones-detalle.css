@@ -824,13 +824,15 @@
 
 /* edicion 11:50 
 
-/* DIVISION LOCALIZADA - TEXTO BLANCO */
 
-.rack-bin-target-division,
-.rack-bin-target-division * {
+/* =========================================
+   TEXTO BLANCO EN DIVISION LOCALIZADA
+========================================= */
+
+.rack-bin.location-target-pulse .rack-bin-target-division,
+.rack-bin.location-target-pulse .rack-bin-target-division *,
+.rack-bin.location-target-pulse .rack-bin-target-division strong,
+.rack-bin.location-target-pulse .rack-bin-target-division span {
   color: #FFFFFF !important;
-}
-
-.rack-bin-target-division svg {
-  stroke: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
