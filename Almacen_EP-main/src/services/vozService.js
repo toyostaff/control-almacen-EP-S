@@ -1,9 +1,8 @@
-
 import { obtenerInventario } from "./inventarioService";
 import { obtenerUbicaciones } from "./ubicacionesService";
 
 // =============================================
-// CONFIGURACIÓN
+// CONFIGURACIÓN DE BÚSQUEDA
 // =============================================
 
 const PALABRAS_IGNORADAS = [
@@ -27,6 +26,8 @@ const PALABRAS_IGNORADAS = [
   "las",
   "un",
   "una",
+  "de",
+  "del",
   "hay",
   "tienes",
   "tienen",
@@ -52,40 +53,21 @@ export function normalizarTexto(texto = "") {
 }
 
 // =============================================
-// NORMALIZAR SINGULAR Y PLURAL
-// =============================================
-
-function normalizarComparacion(texto = "") {
-  return normalizarTexto(texto)
-    .split(" ")
-    .map((palabra) => {
-      if (palabra.length > 4 && palabra.endsWith("s")) {
-        return palabra.slice(0, -1);
-      }
-
-      return palabra;
-    })
-    .join(" ");
-}
-
-// =============================================
-// LIMPIAR CONSULTA DE VOZ O ESCRITA
+// LIMPIAR CONSULTA DE VOZ
 // =============================================
 
 export function limpiarConsultaVoz(consulta = "") {
-  return normalizarTexto(consulta)
+  const texto = normalizarTexto(consulta);
+
+  return texto
     .split(" ")
-    .filter(
-      (palabra) =>
-        palabra &&
-        !PALABRAS_IGNORADAS.includes(palabra)
-    )
+    .filter((palabra) => palabra && !PALABRAS_IGNORADAS.includes(palabra))
     .join(" ")
     .trim();
 }
 
 // =============================================
-// EXTRAER RESPUESTA API
+// EXTRAER DATOS DE LA RESPUESTA API
 // =============================================
 
 function extraerLista(respuesta, nombre) {
@@ -97,50 +79,38 @@ function extraerLista(respuesta, nombre) {
     return respuesta.data;
   }
 
-  throw new Error(
-    `La API no devolvió una lista válida de ${nombre}.`
-  );
+  throw new Error(`La API no devolvió una lista válida de ${nombre}.`);
 }
 
 // =============================================
-// CONSULTAR RAILWAY
+// CONSULTAR INFORMACIÓN DESDE RAILWAY
 // =============================================
 
 async function obtenerDatosAlmacen() {
-  const [
-    respuestaInventario,
-    respuestaUbicaciones,
-  ] = await Promise.all([
+  const [respuestaInventario, respuestaUbicaciones] = await Promise.all([
     obtenerInventario(),
     obtenerUbicaciones(),
   ]);
 
-  return {
-    inventario: extraerLista(
-      respuestaInventario,
-      "inventario"
-    ),
+  const inventario = extraerLista(respuestaInventario, "inventario");
 
-    ubicaciones: extraerLista(
-      respuestaUbicaciones,
-      "ubicaciones"
-    ),
+  const ubicaciones = extraerLista(respuestaUbicaciones, "ubicaciones");
+
+  return {
+    inventario,
+    ubicaciones,
   };
 }
 
 // =============================================
-// OBTENER UBICACIÓN REAL
+// OBTENER INFORMACIÓN DE UBICACIÓN
 // =============================================
 
 function obtenerDatosUbicacion(registro, ubicaciones) {
-  const codigoUbicacion = String(
-    registro.ubicacion || ""
-  ).trim();
+  const codigoUbicacion = String(registro.ubicacion || "").trim();
 
   const ubicacion = ubicaciones.find(
-    (item) =>
-      String(item.id || item.nombre).trim() ===
-      codigoUbicacion
+    (item) => String(item.id || item.nombre).trim() === codigoUbicacion,
   );
 
   if (!ubicacion) {
@@ -149,17 +119,11 @@ function obtenerDatosUbicacion(registro, ubicaciones) {
 
   let subdivision = null;
 
-  const codigoSubdivision = String(
-    registro.subdivision || ""
-  ).trim();
+  const codigoSubdivision = String(registro.subdivision || "").trim();
 
   if (codigoSubdivision) {
-    subdivision = (
-      ubicacion.subdivisiones || []
-    ).find(
-      (item) =>
-        String(item.id || "").trim() ===
-        codigoSubdivision
+    subdivision = (ubicacion.subdivisiones || []).find(
+      (item) => String(item.id || "").trim() === codigoSubdivision,
     );
 
     if (!subdivision) {
@@ -173,9 +137,7 @@ function obtenerDatosUbicacion(registro, ubicaciones) {
     columna: Number(ubicacion.columna),
     codigo: ubicacion.nombre || ubicacion.id,
 
-    tieneSubdivisiones: Boolean(
-      ubicacion.tieneSubdivisiones
-    ),
+    tieneSubdivisiones: Boolean(ubicacion.tieneSubdivisiones),
 
     subdivision: subdivision
       ? {
@@ -193,14 +155,8 @@ function obtenerDatosUbicacion(registro, ubicaciones) {
 // GENERAR RESPUESTA HABLADA
 // =============================================
 
-export function generarRespuestaUbicacion(
-  registro,
-  ubicacion
-) {
-  const nombreRepuesto =
-    registro.descripcion ||
-    registro.sku ||
-    "El repuesto";
+export function generarRespuestaUbicacion(registro, ubicacion) {
+  const nombreRepuesto = registro.descripcion || registro.sku || "El repuesto";
 
   let respuesta =
     `${nombreRepuesto} se encuentra en el ` +
@@ -210,7 +166,7 @@ export function generarRespuestaUbicacion(
 
   if (ubicacion.subdivision) {
     respuesta +=
-      `. División ${ubicacion.subdivision.id}, ` +
+      `. Tiene subdivisión ${ubicacion.subdivision.id}, ` +
       `fila ${ubicacion.subdivision.fila}, ` +
       `columna ${ubicacion.subdivision.columna}`;
   }
@@ -219,50 +175,10 @@ export function generarRespuestaUbicacion(
 }
 
 // =============================================
-// CONSTRUIR RESULTADO FINAL
-// =============================================
-
-function construirResultado(registro, ubicacion) {
-  // No permitir redirección sin ubicación válida.
-
-  if (!ubicacion || !ubicacion.estante) {
-    return {
-      encontrado: false,
-      requiereSeleccion: false,
-
-      respuesta: registro
-        ? "Encontré el repuesto, pero no pude identificar su ubicación. Consulta con el personal de almacén."
-        : "No se encuentra el repuesto que estás buscando.",
-
-      registro,
-      ubicacion: null,
-      opciones: [],
-    };
-  }
-
-  return {
-    encontrado: true,
-    requiereSeleccion: false,
-
-    respuesta: generarRespuestaUbicacion(
-      registro,
-      ubicacion
-    ),
-
-    registro,
-    ubicacion,
-    opciones: [],
-  };
-}
-
-// =============================================
 // CALCULAR COINCIDENCIA
 // =============================================
 
 function calcularCoincidencia(consulta, registro) {
-  const consultaNormalizada =
-    normalizarComparacion(consulta);
-
   const campos = [
     registro.descripcion,
     registro.sku,
@@ -270,62 +186,39 @@ function calcularCoincidencia(consulta, registro) {
     registro.codigoReemplazo,
   ]
     .filter(Boolean)
-    .map(normalizarComparacion);
+    .map(normalizarTexto);
 
   let mejorPuntuacion = 0;
 
   for (const campo of campos) {
-    if (campo === consultaNormalizada) {
-      mejorPuntuacion = Math.max(
-        mejorPuntuacion,
-        100
-      );
-
+    if (campo === consulta) {
+      mejorPuntuacion = Math.max(mejorPuntuacion, 100);
       continue;
     }
 
-    if (campo.startsWith(consultaNormalizada)) {
-      mejorPuntuacion = Math.max(
-        mejorPuntuacion,
-        85
-      );
-
+    if (campo.startsWith(consulta)) {
+      mejorPuntuacion = Math.max(mejorPuntuacion, 85);
       continue;
     }
 
-    if (campo.includes(consultaNormalizada)) {
-      mejorPuntuacion = Math.max(
-        mejorPuntuacion,
-        70
-      );
-
+    if (campo.includes(consulta)) {
+      mejorPuntuacion = Math.max(mejorPuntuacion, 70);
       continue;
     }
 
-    const palabrasConsulta =
-      consultaNormalizada.split(" ");
-
+    const palabrasConsulta = consulta.split(" ");
     const palabrasCampo = campo.split(" ");
 
-    const coincidencias = palabrasConsulta.filter(
-      (palabra) => palabrasCampo.includes(palabra)
+    const coincidencias = palabrasConsulta.filter((palabra) =>
+      palabrasCampo.includes(palabra),
     ).length;
 
-    const porcentaje =
-      palabrasConsulta.length > 0
-        ? coincidencias / palabrasConsulta.length
-        : 0;
+    const porcentaje = coincidencias / palabrasConsulta.length;
 
     if (porcentaje === 1) {
-      mejorPuntuacion = Math.max(
-        mejorPuntuacion,
-        60
-      );
+      mejorPuntuacion = Math.max(mejorPuntuacion, 60);
     } else if (porcentaje >= 0.6) {
-      mejorPuntuacion = Math.max(
-        mejorPuntuacion,
-        40
-      );
+      mejorPuntuacion = Math.max(mejorPuntuacion, 40);
     }
   }
 
@@ -333,257 +226,63 @@ function calcularCoincidencia(consulta, registro) {
 }
 
 // =============================================
-// BUSCAR OPCIONES POR PRIMERA PALABRA
+// BUSCAR REPUESTO EN INVENTARIO DE RAILWAY
 // =============================================
 
-function buscarOpcionesPorPrimeraPalabra(
-  consulta,
-  registrosActivos,
-  ubicaciones
-) {
-  const primeraPalabra = normalizarComparacion(
-    consulta.split(" ")[0]
-  );
-
-  if (!primeraPalabra) {
-    return [];
-  }
-
-  const coincidencias = registrosActivos.filter(
-    (registro) => {
-      const descripcion = normalizarComparacion(
-        registro.descripcion || ""
-      );
-
-      const primeraPalabraDescripcion =
-        descripcion.split(" ")[0];
-
-      return (
-        primeraPalabraDescripcion === primeraPalabra
-      );
-    }
-  );
-
-  // Solo mostrar opciones cuando existen dos o más.
-
-  if (coincidencias.length < 2) {
-    return [];
-  }
-
-  return coincidencias.map((registro) => ({
-    registro,
-
-    ubicacion: obtenerDatosUbicacion(
-      registro,
-      ubicaciones
-    ),
-  }));
-}
-
-// =============================================
-// BUSCAR REPUESTO
-// =============================================
-
-export async function buscarRepuestoPorVoz(
-  consultaOriginal
-) {
-  const consulta = limpiarConsultaVoz(
-    consultaOriginal
-  );
+export async function buscarRepuestoPorVoz(consultaOriginal) {
+  const consulta = limpiarConsultaVoz(consultaOriginal);
 
   if (!consulta) {
     return {
       encontrado: false,
-      requiereSeleccion: false,
-
-      respuesta:
-        "Por favor, indica el nombre del repuesto que necesitas.",
-
+      respuesta: "Por favor, indica el nombre del repuesto que necesitas.",
       registro: null,
       ubicacion: null,
-      opciones: [],
     };
-  }
+  } // Consultar inventario y ubicaciones reales.
 
-  // Consultar información real de Railway.
-
-  const {
-    inventario,
-    ubicaciones,
-  } = await obtenerDatosAlmacen();
-
-  // Considerar únicamente registros activos.
+  const { inventario, ubicaciones } = await obtenerDatosAlmacen(); // Considerar únicamente registros activos.
 
   const registrosActivos = inventario.filter(
-    (registro) => registro.estado === "Activo"
-  );
-
-  // ===========================================
-  // 1. BUSCAR OPCIONES POR PRIMERA PALABRA
-  // ===========================================
-
-  const opciones = buscarOpcionesPorPrimeraPalabra(
-    consulta,
-    registrosActivos,
-    ubicaciones
-  );
-
-  // Si el usuario consulta una sola palabra
-  // y existen varias opciones, esperar selección.
-
-  if (
-    consulta.split(" ").length === 1 &&
-    opciones.length >= 2
-  ) {
-    return {
-      encontrado: false,
-      requiereSeleccion: true,
-
-      respuesta:
-        "Tengo estas opciones con el mismo nombre. Puedes elegir cuál estás buscando.",
-
-      registro: null,
-      ubicacion: null,
-      opciones,
-    };
-  }
-
-  // ===========================================
-  // 2. BUSCAR COINCIDENCIA EXACTA
-  // ===========================================
-
-  const consultaExacta =
-    normalizarComparacion(consulta);
-
-  const coincidenciaExacta = registrosActivos.find(
-    (registro) => {
-      const campos = [
-        registro.descripcion,
-        registro.sku,
-        registro.codigo,
-        registro.codigoReemplazo,
-      ]
-        .filter(Boolean)
-        .map(normalizarComparacion);
-
-      return campos.includes(consultaExacta);
-    }
-  );
-
-  // Si existe coincidencia exacta,
-  // ir directamente a su ubicación.
-
-  if (coincidenciaExacta) {
-    const ubicacion = obtenerDatosUbicacion(
-      coincidenciaExacta,
-      ubicaciones
-    );
-
-    return construirResultado(
-      coincidenciaExacta,
-      ubicacion
-    );
-  }
-
-  // ===========================================
-  // 3. BÚSQUEDA GENERAL
-  // ===========================================
+    (registro) => registro.estado === "Activo",
+  ); // Calcular coincidencias.
 
   const resultados = registrosActivos
     .map((registro, index) => ({
       registro,
       index,
-
-      puntuacion: calcularCoincidencia(
-        consulta,
-        registro
-      ),
+      puntuacion: calcularCoincidencia(consulta, registro),
     }))
-    .filter(
-      (resultado) => resultado.puntuacion > 0
-    )
-    .sort(
-      (a, b) =>
-        b.puntuacion - a.puntuacion ||
-        a.index - b.index
-    );
-
-  // ===========================================
-  // 4. NO ENCONTRADO
-  // ===========================================
+    .filter((resultado) => resultado.puntuacion > 0)
+    .sort((a, b) => b.puntuacion - a.puntuacion || a.index - b.index);
 
   if (resultados.length === 0) {
     return {
       encontrado: false,
-      requiereSeleccion: false,
-
-      respuesta:
-        "No se encuentra el repuesto que estás buscando.",
-
+      respuesta: "No se encuentra el repuesto que estás buscando.",
       registro: null,
       ubicacion: null,
-      opciones: [],
     };
-  }
+  } // Seleccionar la coincidencia más exacta.
 
-  // ===========================================
-  // 5. RESULTADO ENCONTRADO
-  // ===========================================
+  const registro = resultados[0].registro; // Consultar su ubicación real en Railway.
 
-  const registro = resultados[0].registro;
+  const ubicacion = obtenerDatosUbicacion(registro, ubicaciones);
 
-  const ubicacion = obtenerDatosUbicacion(
-    registro,
-    ubicaciones
-  );
-
-  return construirResultado(
-    registro,
-    ubicacion
-  );
-}
-
-// =============================================
-// BUSCAR POR ESCRITO
-// =============================================
-
-// La búsqueda escrita utiliza exactamente
-// el mismo motor que la búsqueda por voz.
-
-export async function buscarRepuesto(consulta) {
-  return buscarRepuestoPorVoz(consulta);
-}
-
-export async function buscarRepuestoPorTexto(
-  consulta
-) {
-  return buscarRepuestoPorVoz(consulta);
-}
-
-// =============================================
-// SELECCIONAR UNA OPCIÓN
-// =============================================
-
-export function seleccionarOpcionRepuesto(opcion) {
-  if (!opcion?.registro) {
+  if (!ubicacion) {
     return {
       encontrado: false,
-      requiereSeleccion: false,
-
       respuesta:
-        "La opción seleccionada no es válida.",
-
-      registro: null,
+        "Encontré el repuesto, pero no pude identificar su ubicación. Consulta con el personal de almacén.",
+      registro,
       ubicacion: null,
-      opciones: [],
     };
   }
 
-  // La ubicación solo se devuelve después
-  // de que el usuario selecciona una opción.
-
-  return construirResultado(
-    opcion.registro,
-    opcion.ubicacion
-  );
+  return {
+    encontrado: true,
+    respuesta: generarRespuestaUbicacion(registro, ubicacion),
+    registro,
+    ubicacion,
+  };
 }
