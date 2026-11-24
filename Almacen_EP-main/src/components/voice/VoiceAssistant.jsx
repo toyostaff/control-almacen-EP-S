@@ -96,10 +96,11 @@ function VoiceAssistant({ onResultado }) {
         setMensaje(datos.respuesta);
         setTipoMensaje("options");
 
-        limpiarResultado();
+        // IMPORTANTE:
+        // No modificar la ubicación actual.
+        // Esperar a que el usuario seleccione una opción.
 
         hablar(datos.respuesta);
-
         return;
       }
 
@@ -127,7 +128,6 @@ function VoiceAssistant({ onResultado }) {
       }
 
       hablar(datos.respuesta);
-
     } catch (error) {
       console.error("Error consultando inventario:", error);
 
@@ -141,7 +141,6 @@ function VoiceAssistant({ onResultado }) {
       onResultadoRef.current?.(null);
 
       hablar(respuesta);
-
     } finally {
       setProcesando(false);
       procesandoRef.current = false;
@@ -171,7 +170,6 @@ function VoiceAssistant({ onResultado }) {
 
       // Solo ahora se muestra la ubicación seleccionada.
       onResultadoRef.current?.(resultado);
-
     } else {
       setTipoMensaje("error");
 
@@ -187,8 +185,7 @@ function VoiceAssistant({ onResultado }) {
 
   useEffect(() => {
     const SpeechRecognition =
-      window.SpeechRecognition ||
-      window.webkitSpeechRecognition;
+      window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
       setSoporteVoz(false);
@@ -212,8 +209,7 @@ function VoiceAssistant({ onResultado }) {
     };
 
     reconocimiento.onresult = (event) => {
-      const texto =
-        event.results[0][0].transcript.trim();
+      const texto = event.results[0][0].transcript.trim();
 
       if (texto) {
         void procesarConsulta(texto);
@@ -232,14 +228,11 @@ function VoiceAssistant({ onResultado }) {
       ) {
         respuesta = "Permite el acceso al micrófono.";
       } else if (event.error === "no-speech") {
-        respuesta =
-          "No detecté ninguna voz. Inténtalo nuevamente.";
+        respuesta = "No detecté ninguna voz. Inténtalo nuevamente.";
       } else if (event.error === "network") {
-        respuesta =
-          "Error de conexión al reconocer la voz.";
+        respuesta = "Error de conexión al reconocer la voz.";
       } else if (event.error === "audio-capture") {
-        respuesta =
-          "No se encontró un micrófono disponible.";
+        respuesta = "No se encontró un micrófono disponible.";
       }
 
       setMensaje(respuesta);
@@ -289,7 +282,6 @@ function VoiceAssistant({ onResultado }) {
 
     ultimoTextoHabladoRef.current = "";
 
-    limpiarResultado();
 
     activoRef.current = true;
 
@@ -298,7 +290,6 @@ function VoiceAssistant({ onResultado }) {
 
     try {
       reconocimientoRef.current.start();
-
     } catch (error) {
       activoRef.current = false;
       setEscuchando(false);
@@ -333,22 +324,13 @@ function VoiceAssistant({ onResultado }) {
 
   return (
     <div className="voice-control">
-
       <button
         type="button"
-        className={`voice-control-button ${
-          escuchando ? "is-listening" : ""
-        }`}
-        onClick={
-          escuchando
-            ? cancelarEscucha
-            : iniciarEscucha
-        }
+        className={`voice-control-button ${escuchando ? "is-listening" : ""}`}
+        onClick={escuchando ? cancelarEscucha : iniciarEscucha}
         disabled={procesando || !soporteVoz}
         title={
-          escuchando
-            ? "Cancelar consulta"
-            : "Buscar repuesto mediante voz"
+          escuchando ? "Cancelar consulta" : "Buscar repuesto mediante voz"
         }
         aria-label="Buscar repuesto mediante voz"
       >
@@ -362,13 +344,7 @@ function VoiceAssistant({ onResultado }) {
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <rect
-            x="9"
-            y="2"
-            width="6"
-            height="12"
-            rx="3"
-          />
+          <rect x="9" y="2" width="6" height="12" rx="3" />
           <path d="M5 10a7 7 0 0 0 14 0" />
           <path d="M12 17v5" />
           <path d="M8 22h8" />
@@ -381,13 +357,9 @@ function VoiceAssistant({ onResultado }) {
           role="status"
           aria-live="polite"
         >
-          {escuchando && (
-            <span className="voice-inline-indicator" />
-          )}
+          {escuchando && <span className="voice-inline-indicator" />}
 
-          {procesando && (
-            <span className="voice-inline-spinner" />
-          )}
+          {procesando && <span className="voice-inline-spinner" />}
 
           <span>{mensaje}</span>
         </div>
@@ -397,41 +369,29 @@ function VoiceAssistant({ onResultado }) {
 
       {opciones.length > 0 && (
         <div className="voice-search-options">
-
           <p className="voice-search-options-title">
             Selecciona el material que necesitas:
           </p>
 
           {opciones.map((opcion) => (
             <button
-              key={
-                opcion.registro.sku ||
-                opcion.registro.id
-              }
+              key={opcion.registro.sku || opcion.registro.id}
               type="button"
               className="voice-search-option"
               onClick={() => seleccionarMaterial(opcion)}
               disabled={procesando}
             >
               <span className="voice-search-option-info">
+                <strong>{opcion.registro.descripcion}</strong>
 
-                <strong>
-                  {opcion.registro.descripcion}
-                </strong>
-
-                <small>
-                  {opcion.registro.sku || "Sin SKU"}
-                </small>
-
+                <small>{opcion.registro.sku || "Sin SKU"}</small>
               </span>
 
               <span aria-hidden="true">›</span>
             </button>
           ))}
-
         </div>
       )}
-
     </div>
   );
 }
