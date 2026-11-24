@@ -820,3 +820,17 @@
     box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.2);
   }
 }
+
+
+/* edicion 11:50 
+
+/* DIVISION LOCALIZADA - TEXTO BLANCO */
+
+.rack-bin-target-division,
+.rack-bin-target-division * {
+  color: #FFFFFF !important;
+}
+
+.rack-bin-target-division svg {
+  stroke: #FFFFFF !important;
+}
