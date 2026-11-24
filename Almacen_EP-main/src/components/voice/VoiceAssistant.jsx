@@ -77,7 +77,19 @@ function VoiceAssistant({ onResultado }) {
         datos.encontrado ? "success" : "error"
       );
 
-      onResultadoRef.current?.(datos);
+      // CORRECCIÓN:
+      // Solo redireccionar si existe el repuesto
+      // y tiene una ubicación válida.
+
+      if (
+        datos.encontrado === true &&
+        datos.ubicacion
+      ) {
+        onResultadoRef.current?.(datos);
+      } else {
+        onResultadoRef.current?.(null);
+      }
+
       hablar(datos.respuesta);
 
     } catch (error) {
@@ -93,7 +105,9 @@ function VoiceAssistant({ onResultado }) {
       setMensaje(respuesta);
       setTipoMensaje("error");
 
+      // No conservar ubicación anterior.
       onResultadoRef.current?.(null);
+
       hablar(respuesta);
 
     } finally {
@@ -116,7 +130,18 @@ function VoiceAssistant({ onResultado }) {
       resultado.encontrado ? "success" : "error"
     );
 
-    onResultadoRef.current?.(resultado);
+    // CORRECCIÓN:
+    // Redireccionar únicamente con ubicación válida.
+
+    if (
+      resultado.encontrado === true &&
+      resultado.ubicacion
+    ) {
+      onResultadoRef.current?.(resultado);
+    } else {
+      onResultadoRef.current?.(null);
+    }
+
     hablar(resultado.respuesta);
   };
 
@@ -339,7 +364,10 @@ function VoiceAssistant({ onResultado }) {
 
           {opciones.map((opcion) => (
             <button
-              key={opcion.registro.sku || opcion.registro.id}
+              key={
+                opcion.registro.sku ||
+                opcion.registro.id
+              }
               type="button"
               className="voice-search-option"
               onClick={() => seleccionarMaterial(opcion)}

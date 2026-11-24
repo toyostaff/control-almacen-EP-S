@@ -175,14 +175,19 @@ export function generarRespuestaUbicacion(
 // CONSTRUIR RESULTADO FINAL
 // =============================================
 
+
 function construirResultado(registro, ubicacion) {
+  // CORRECCIÓN: no permitir redirección
+  // cuando no existe una ubicación válida.
+
   if (!ubicacion) {
     return {
       encontrado: false,
       requiereSeleccion: false,
-      respuesta:
-        "Encontré el repuesto, pero no pude identificar su ubicación. Consulta con el personal de almacén.",
-      registro,
+      respuesta: registro
+        ? "Encontré el repuesto, pero no pude identificar su ubicación. Consulta con el personal de almacén."
+        : "No se encuentra el repuesto que estás buscando.",
+      registro: null,
       ubicacion: null
     };
   }
@@ -198,6 +203,7 @@ function construirResultado(registro, ubicacion) {
     ubicacion
   };
 }
+
 
 // =============================================
 // CALCULAR COINCIDENCIA
