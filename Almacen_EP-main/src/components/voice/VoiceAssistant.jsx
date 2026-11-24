@@ -6,7 +6,10 @@ import {
   seleccionarOpcionRepuesto
 } from "../../services/vozService";
 
-function VoiceAssistant({ onResultado }) {
+function VoiceAssistant({
+  onResultado,
+  busquedaEscrita = ""
+}) {
   const [escuchando, setEscuchando] = useState(false);
   const [procesando, setProcesando] = useState(false);
   const [soporteVoz, setSoporteVoz] = useState(false);
@@ -18,11 +21,47 @@ function VoiceAssistant({ onResultado }) {
   const activoRef = useRef(false);
   const procesandoRef = useRef(false);
   const cancelacionManualRef = useRef(false);
+
   const onResultadoRef = useRef(onResultado);
+  const busquedaAnteriorRef = useRef(busquedaEscrita);
+
+  // Identifica consultas para evitar mostrar resultados antiguos.
+  const consultaIdRef = useRef(0);
+
+  // =====================================
+  // ACTUALIZAR REFERENCIAS
+  // =====================================
 
   useEffect(() => {
     onResultadoRef.current = onResultado;
   }, [onResultado]);
+
+  // =====================================
+  // LIMPIAR VOZ AL ESCRIBIR
+  // =====================================
+
+  useEffect(() => {
+    if (busquedaAnteriorRef.current === busquedaEscrita) {
+      return;
+    }
+
+    busquedaAnteriorRef.current = busquedaEscrita;
+
+    // Invalidar cualquier resultado de voz pendiente.
+    consultaIdRef.current += 1;
+
+    cancelacionManualRef.current = true;
+    activoRef.current = false;
+
+    reconocimientoRef.current?.abort();
+
+    window.speechSynthesis?.cancel();
+
+    setEscuchando(false);
+    setOpciones([]);
+    setMensaje("");
+    setTipoMensaje("");
+  }, [busquedaEscrita]);
 
   // =====================================
   // RESPUESTA HABLADA
@@ -49,6 +88,8 @@ function VoiceAssistant({ onResultado }) {
   const procesarConsulta = async (texto) => {
     if (procesandoRef.current) return;
 
+    const consultaActual = ++consultaIdRef.current;
+
     setProcesando(true);
     procesandoRef.current = true;
     setOpciones([]);
@@ -58,6 +99,12 @@ function VoiceAssistant({ onResultado }) {
 
     try {
       const datos = await buscarRepuestoPorVoz(texto);
+
+      // Si el usuario comenzó a escribir, ignorar
+      // el resultado de la consulta de voz anterior.
+      if (consultaActual !== consultaIdRef.current) {
+        return;
+      }
 
       if (datos.requiereSeleccion) {
         setOpciones(datos.opciones || []);
@@ -81,6 +128,12 @@ function VoiceAssistant({ onResultado }) {
       hablar(datos.respuesta);
 
     } catch (error) {
+      // No mostrar errores de consultas que ya fueron
+      // sustituidas por una búsqueda escrita.
+      if (consultaActual !== consultaIdRef.current) {
+        return;
+      }
+
       console.error("Error consultando inventario:", error);
 
       const respuesta =
@@ -118,6 +171,27 @@ function VoiceAssistant({ onResultado }) {
   };
 
   // =====================================
+  // OCULTAR RESULTADOS AUTOMÁTICAMENTE
+  // =====================================
+
+  useEffect(() => {
+    // Las opciones múltiples deben permanecer visibles.
+    if (
+      tipoMensaje !== "success" &&
+      tipoMensaje !== "error"
+    ) {
+      return;
+    }
+
+    const temporizador = setTimeout(() => {
+      setMensaje("");
+      setTipoMensaje("");
+    }, 8000);
+
+    return () => clearTimeout(temporizador);
+  }, [tipoMensaje, mensaje]);
+
+  // =====================================
   // INICIALIZAR MICRÓFONO
   // =====================================
 
@@ -141,7 +215,7 @@ function VoiceAssistant({ onResultado }) {
     reconocimiento.maxAlternatives = 1;
 
     reconocimiento.onstart = () => {
-      cancelacionManualRef.current = false;
+      if (cancelacionManualRef.current) return;
 
       setEscuchando(true);
       setMensaje("Te escucho...");
@@ -150,7 +224,12 @@ function VoiceAssistant({ onResultado }) {
     };
 
     reconocimiento.onresult = (event) => {
-      if (cancelacionManualRef.current) return;
+      if (
+        cancelacionManualRef.current ||
+        !activoRef.current
+      ) {
+        return;
+      }
 
       const texto =
         event.results[0][0].transcript.trim();
@@ -164,7 +243,7 @@ function VoiceAssistant({ onResultado }) {
       activoRef.current = false;
       setEscuchando(false);
 
-      // Evitar mensajes de error después de cancelar manualmente.
+      // Evitar mensajes de error después de cancelar.
       if (cancelacionManualRef.current) {
         cancelacionManualRef.current = false;
         return;
@@ -241,6 +320,9 @@ function VoiceAssistant({ onResultado }) {
     cancelacionManualRef.current = false;
 
     setOpciones([]);
+    setMensaje("");
+    setTipoMensaje("");
+
     onResultadoRef.current?.(null);
 
     activoRef.current = true;
@@ -266,6 +348,9 @@ function VoiceAssistant({ onResultado }) {
   // =====================================
 
   const cancelarEscucha = () => {
+    // Evitar que un resultado pendiente aparezca.
+    consultaIdRef.current += 1;
+
     cancelacionManualRef.current = true;
     activoRef.current = false;
 
