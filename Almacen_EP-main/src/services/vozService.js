@@ -1,4 +1,3 @@
-
 import { obtenerInventario } from "./inventarioService";
 import { obtenerUbicaciones } from "./ubicacionesService";
 
@@ -7,12 +6,34 @@ import { obtenerUbicaciones } from "./ubicacionesService";
 // =============================================
 
 const PALABRAS_IGNORADAS = [
-  "necesito", "busco", "buscar", "quiero", "dame",
-  "donde", "esta", "encuentra", "encuentro",
-  "ubicacion", "localiza", "encontrar", "por",
-  "favor", "el", "la", "los", "las", "un", "una",
-  "de", "del", "hay", "tienes", "tienen", "me",
-  "puedes", "indica", "repuesto", "material"
+  "necesito",
+  "busco",
+  "buscar",
+  "quiero",
+  "dame",
+  "donde",
+  "esta",
+  "encuentra",
+  "encuentro",
+  "ubicacion",
+  "localiza",
+  "encontrar",
+  "por",
+  "favor",
+  "el",
+  "la",
+  "los",
+  "las",
+  "un",
+  "una",
+  "hay",
+  "tienes",
+  "tienen",
+  "me",
+  "puedes",
+  "indica",
+  "repuesto",
+  "material",
 ];
 
 // =============================================
@@ -30,15 +51,33 @@ export function normalizarTexto(texto = "") {
 }
 
 // =============================================
-// LIMPIAR CONSULTA
+// NORMALIZAR SINGULAR Y PLURAL
+// =============================================
+
+function normalizarComparacion(texto = "") {
+  return normalizarTexto(texto)
+    .split(" ")
+    .map((palabra) => {
+      if (palabra.length > 4 && palabra.endsWith("s")) {
+        return palabra.slice(0, -1);
+      }
+
+      return palabra;
+    })
+    .join(" ");
+}
+
+// =============================================
+// LIMPIAR CONSULTA DE VOZ O ESCRITA
 // =============================================
 
 export function limpiarConsultaVoz(consulta = "") {
   return normalizarTexto(consulta)
     .split(" ")
     .filter(
-      palabra =>
-        palabra && !PALABRAS_IGNORADAS.includes(palabra)
+      (palabra) =>
+        palabra &&
+        !PALABRAS_IGNORADAS.includes(palabra)
     )
     .join(" ")
     .trim();
@@ -67,21 +106,24 @@ function extraerLista(respuesta, nombre) {
 // =============================================
 
 async function obtenerDatosAlmacen() {
-  const [respuestaInventario, respuestaUbicaciones] =
-    await Promise.all([
-      obtenerInventario(),
-      obtenerUbicaciones()
-    ]);
+  const [
+    respuestaInventario,
+    respuestaUbicaciones,
+  ] = await Promise.all([
+    obtenerInventario(),
+    obtenerUbicaciones(),
+  ]);
 
   return {
     inventario: extraerLista(
       respuestaInventario,
       "inventario"
     ),
+
     ubicaciones: extraerLista(
       respuestaUbicaciones,
       "ubicaciones"
-    )
+    ),
   };
 }
 
@@ -95,7 +137,7 @@ function obtenerDatosUbicacion(registro, ubicaciones) {
   ).trim();
 
   const ubicacion = ubicaciones.find(
-    item =>
+    (item) =>
       String(item.id || item.nombre).trim() ===
       codigoUbicacion
   );
@@ -111,8 +153,10 @@ function obtenerDatosUbicacion(registro, ubicaciones) {
   ).trim();
 
   if (codigoSubdivision) {
-    subdivision = (ubicacion.subdivisiones || []).find(
-      item =>
+    subdivision = (
+      ubicacion.subdivisiones || []
+    ).find(
+      (item) =>
         String(item.id || "").trim() ===
         codigoSubdivision
     );
@@ -138,9 +182,9 @@ function obtenerDatosUbicacion(registro, ubicaciones) {
           nombre: subdivision.nombre,
           fila: Number(subdivision.fila),
           columna: Number(subdivision.columna),
-          ocupada: Boolean(subdivision.ocupada)
+          ocupada: Boolean(subdivision.ocupada),
         }
-      : null
+      : null,
   };
 }
 
@@ -153,7 +197,9 @@ export function generarRespuestaUbicacion(
   ubicacion
 ) {
   const nombreRepuesto =
-    registro.descripcion || registro.sku || "El repuesto";
+    registro.descripcion ||
+    registro.sku ||
+    "El repuesto";
 
   let respuesta =
     `${nombreRepuesto} se encuentra en el ` +
@@ -175,96 +221,164 @@ export function generarRespuestaUbicacion(
 // CONSTRUIR RESULTADO FINAL
 // =============================================
 
-
 function construirResultado(registro, ubicacion) {
-  // CORRECCIÓN: no permitir redirección
-  // cuando no existe una ubicación válida.
+  // No permitir redirección sin ubicación válida.
 
-  if (!ubicacion) {
+  if (!ubicacion || !ubicacion.estante) {
     return {
       encontrado: false,
       requiereSeleccion: false,
+
       respuesta: registro
         ? "Encontré el repuesto, pero no pude identificar su ubicación. Consulta con el personal de almacén."
         : "No se encuentra el repuesto que estás buscando.",
-      registro: null,
-      ubicacion: null
+
+      registro,
+      ubicacion: null,
+      opciones: [],
     };
   }
 
   return {
     encontrado: true,
     requiereSeleccion: false,
+
     respuesta: generarRespuestaUbicacion(
       registro,
       ubicacion
     ),
+
     registro,
-    ubicacion
+    ubicacion,
+    opciones: [],
   };
 }
-
 
 // =============================================
 // CALCULAR COINCIDENCIA
 // =============================================
 
 function calcularCoincidencia(consulta, registro) {
+  const consultaNormalizada =
+    normalizarComparacion(consulta);
+
   const campos = [
     registro.descripcion,
     registro.sku,
     registro.codigo,
-    registro.codigoReemplazo
+    registro.codigoReemplazo,
   ]
     .filter(Boolean)
-    .map(normalizarTexto);
+    .map(normalizarComparacion);
 
   let mejorPuntuacion = 0;
 
   for (const campo of campos) {
-    if (campo === consulta) {
+    if (campo === consultaNormalizada) {
       mejorPuntuacion = Math.max(
-        mejorPuntuacion, 100
+        mejorPuntuacion,
+        100
       );
+
       continue;
     }
 
-    if (campo.startsWith(consulta)) {
+    if (campo.startsWith(consultaNormalizada)) {
       mejorPuntuacion = Math.max(
-        mejorPuntuacion, 85
+        mejorPuntuacion,
+        85
       );
+
       continue;
     }
 
-    if (campo.includes(consulta)) {
+    if (campo.includes(consultaNormalizada)) {
       mejorPuntuacion = Math.max(
-        mejorPuntuacion, 70
+        mejorPuntuacion,
+        70
       );
+
       continue;
     }
 
-    const palabrasConsulta = consulta.split(" ");
+    const palabrasConsulta =
+      consultaNormalizada.split(" ");
+
     const palabrasCampo = campo.split(" ");
 
     const coincidencias = palabrasConsulta.filter(
-      palabra => palabrasCampo.includes(palabra)
+      (palabra) => palabrasCampo.includes(palabra)
     ).length;
 
     const porcentaje =
-      coincidencias / palabrasConsulta.length;
+      palabrasConsulta.length > 0
+        ? coincidencias / palabrasConsulta.length
+        : 0;
 
     if (porcentaje === 1) {
       mejorPuntuacion = Math.max(
-        mejorPuntuacion, 60
+        mejorPuntuacion,
+        60
       );
     } else if (porcentaje >= 0.6) {
       mejorPuntuacion = Math.max(
-        mejorPuntuacion, 40
+        mejorPuntuacion,
+        40
       );
     }
   }
 
   return mejorPuntuacion;
+}
+
+// =============================================
+// BUSCAR OPCIONES POR PRIMERA PALABRA
+// =============================================
+
+function buscarOpcionesPorPrimeraPalabra(
+  consulta,
+  registrosActivos,
+  ubicaciones
+) {
+  const primeraPalabra =
+    normalizarComparacion(
+      consulta.split(" ")[0]
+    );
+
+  if (!primeraPalabra) {
+    return [];
+  }
+
+  const coincidencias = registrosActivos.filter(
+    (registro) => {
+      const descripcion =
+        normalizarComparacion(
+          registro.descripcion || ""
+        );
+
+      const primeraPalabraDescripcion =
+        descripcion.split(" ")[0];
+
+      return (
+        primeraPalabraDescripcion === primeraPalabra
+      );
+    }
+  );
+
+  // Solo mostrar opciones cuando existen dos o más.
+
+  if (coincidencias.length < 2) {
+    return [];
+  }
+
+  return coincidencias.map((registro) => ({
+    registro,
+
+    ubicacion: obtenerDatosUbicacion(
+      registro,
+      ubicaciones
+    ),
+  }));
 }
 
 // =============================================
@@ -282,39 +396,52 @@ export async function buscarRepuestoPorVoz(
     return {
       encontrado: false,
       requiereSeleccion: false,
+
       respuesta:
         "Por favor, indica el nombre del repuesto que necesitas.",
+
       registro: null,
       ubicacion: null,
-      opciones: []
+      opciones: [],
     };
   }
 
-  const { inventario, ubicaciones } =
-    await obtenerDatosAlmacen();
+  // Consultar información real de Railway.
+
+  const {
+    inventario,
+    ubicaciones,
+  } = await obtenerDatosAlmacen();
+
+  // Considerar únicamente registros activos.
 
   const registrosActivos = inventario.filter(
-    registro => registro.estado === "Activo"
+    (registro) => registro.estado === "Activo"
   );
 
+  // ===========================================
   // 1. BUSCAR COINCIDENCIA EXACTA
+  // ===========================================
 
-  const coincidenciaExacta = registrosActivos.find(
-    registro => {
+  const consultaExacta =
+    normalizarComparacion(consulta);
+
+  const coincidenciaExacta =
+    registrosActivos.find((registro) => {
       const campos = [
         registro.descripcion,
         registro.sku,
         registro.codigo,
-        registro.codigoReemplazo
+        registro.codigoReemplazo,
       ]
         .filter(Boolean)
-        .map(normalizarTexto);
+        .map(normalizarComparacion);
 
-      return campos.includes(consulta);
-    }
-  );
+      return campos.includes(consultaExacta);
+    });
 
-  // Si existe coincidencia exacta, no mostrar opciones.
+  // Si existe coincidencia exacta,
+  // ir directamente a su ubicación.
 
   if (coincidenciaExacta) {
     const ubicacion = obtenerDatosUbicacion(
@@ -328,77 +455,74 @@ export async function buscarRepuestoPorVoz(
     );
   }
 
+  // ===========================================
   // 2. BUSCAR OPCIONES POR PRIMERA PALABRA
+  // ===========================================
 
-  const palabras = consulta.split(" ");
+  const opciones = buscarOpcionesPorPrimeraPalabra(
+    consulta,
+    registrosActivos,
+    ubicaciones
+  );
 
-  if (palabras.length === 1) {
-    const opcionesIniciales = registrosActivos.filter(
-      registro => {
-        const descripcion = normalizarTexto(
-          registro.descripcion
-        );
+  if (opciones.length >= 2) {
+    return {
+      encontrado: false,
+      requiereSeleccion: true,
 
-        return descripcion.startsWith(
-          consulta + " "
-        );
-      }
-    );
+      respuesta:
+        "Tengo estas opciones con el mismo nombre. Puedes elegir cuál estás buscando.",
 
-    // Mostrar opciones solamente cuando existan 2 o más.
-
-    if (opcionesIniciales.length >= 2) {
-      const opciones = opcionesIniciales.map(
-        registro => ({
-          registro,
-          ubicacion: obtenerDatosUbicacion(
-            registro,
-            ubicaciones
-          )
-        })
-      );
-
-      return {
-        encontrado: false,
-        requiereSeleccion: true,
-        respuesta:
-          "Tengo estas opciones con el mismo nombre. Puedes elegir cuál estás buscando.",
-        registro: null,
-        ubicacion: null,
-        opciones
-      };
-    }
+      registro: null,
+      ubicacion: null,
+      opciones,
+    };
   }
 
+  // ===========================================
   // 3. BÚSQUEDA GENERAL
+  // ===========================================
 
   const resultados = registrosActivos
     .map((registro, index) => ({
       registro,
       index,
+
       puntuacion: calcularCoincidencia(
         consulta,
         registro
-      )
+      ),
     }))
-    .filter(resultado => resultado.puntuacion > 0)
+    .filter(
+      (resultado) => resultado.puntuacion > 0
+    )
     .sort(
       (a, b) =>
         b.puntuacion - a.puntuacion ||
         a.index - b.index
     );
 
+  // ===========================================
+  // 4. NO ENCONTRADO
+  // ===========================================
+
   if (resultados.length === 0) {
     return {
       encontrado: false,
       requiereSeleccion: false,
+
       respuesta:
         "No se encuentra el repuesto que estás buscando.",
+
       registro: null,
       ubicacion: null,
-      opciones: []
+      opciones: [],
     };
   }
+
+  // ===========================================
+  // 5. RESULTADO ENCONTRADO
+  // ===========================================
 
   const registro = resultados[0].registro;
 
@@ -407,7 +531,25 @@ export async function buscarRepuestoPorVoz(
     ubicaciones
   );
 
-  return construirResultado(registro, ubicacion);
+  return construirResultado(
+    registro,
+    ubicacion
+  );
+}
+
+// =============================================
+// BUSCAR POR ESCRITO
+// =============================================
+
+// La búsqueda escrita utiliza exactamente
+// el mismo motor que la búsqueda por voz.
+
+export async function buscarRepuesto(consulta) {
+  return buscarRepuestoPorVoz(consulta);
+}
+
+export async function buscarRepuestoPorTexto(consulta) {
+  return buscarRepuestoPorVoz(consulta);
 }
 
 // =============================================
@@ -418,9 +560,14 @@ export function seleccionarOpcionRepuesto(opcion) {
   if (!opcion?.registro) {
     return {
       encontrado: false,
-      respuesta: "La opción seleccionada no es válida.",
+      requiereSeleccion: false,
+
+      respuesta:
+        "La opción seleccionada no es válida.",
+
       registro: null,
-      ubicacion: null
+      ubicacion: null,
+      opciones: [],
     };
   }
 

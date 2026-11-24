@@ -1,9 +1,8 @@
-
 import { useEffect, useRef, useState } from "react";
 
 import {
   buscarRepuestoPorVoz,
-  seleccionarOpcionRepuesto
+  seleccionarOpcionRepuesto,
 } from "../../services/vozService";
 
 function VoiceAssistant({ onResultado }) {
@@ -19,6 +18,10 @@ function VoiceAssistant({ onResultado }) {
   const procesandoRef = useRef(false);
   const onResultadoRef = useRef(onResultado);
 
+  // Evitar respuestas habladas duplicadas.
+  const ultimoTextoHabladoRef = useRef("");
+  const ultimaReproduccionRef = useRef(0);
+
   useEffect(() => {
     onResultadoRef.current = onResultado;
   }, [onResultado]);
@@ -28,17 +31,44 @@ function VoiceAssistant({ onResultado }) {
   // =====================================
 
   const hablar = (texto) => {
-    if (!("speechSynthesis" in window)) return;
+    if (!("speechSynthesis" in window) || !texto) return;
+
+    const textoLimpio = String(texto).trim();
+
+    if (!textoLimpio) return;
+
+    const ahora = Date.now();
+
+    // Evitar reproducir dos veces el mismo mensaje.
+    if (
+      ultimoTextoHabladoRef.current === textoLimpio &&
+      ahora - ultimaReproduccionRef.current < 1800
+    ) {
+      return;
+    }
+
+    ultimoTextoHabladoRef.current = textoLimpio;
+    ultimaReproduccionRef.current = ahora;
 
     window.speechSynthesis.cancel();
 
-    const respuesta = new SpeechSynthesisUtterance(texto);
+    const respuesta = new SpeechSynthesisUtterance(textoLimpio);
 
     respuesta.lang = "es-PE";
     respuesta.rate = 0.95;
     respuesta.pitch = 1;
+    respuesta.volume = 1;
 
     window.speechSynthesis.speak(respuesta);
+  };
+
+  // =====================================
+  // LIMPIAR RESULTADO ANTERIOR
+  // =====================================
+
+  const limpiarResultado = () => {
+    setOpciones([]);
+    onResultadoRef.current?.(null);
   };
 
   // =====================================
@@ -46,57 +76,60 @@ function VoiceAssistant({ onResultado }) {
   // =====================================
 
   const procesarConsulta = async (texto) => {
-    if (procesandoRef.current) return;
+    if (procesandoRef.current || !texto?.trim()) return;
 
     setProcesando(true);
     procesandoRef.current = true;
-    setOpciones([]);
 
+    setOpciones([]);
     setMensaje("Consultando inventario...");
     setTipoMensaje("processing");
 
     try {
       const datos = await buscarRepuestoPorVoz(texto);
 
+      // CASO 1: EXISTEN VARIAS OPCIONES.
+      // No redireccionar hasta que el usuario seleccione.
+
       if (datos.requiereSeleccion) {
         setOpciones(datos.opciones || []);
         setMensaje(datos.respuesta);
         setTipoMensaje("options");
 
-        // Limpiar ubicación anterior.
-        onResultadoRef.current?.(null);
+        limpiarResultado();
 
         hablar(datos.respuesta);
+
         return;
       }
+
+      // CASO 2: RESULTADO ÚNICO.
 
       setOpciones([]);
       setMensaje(datos.respuesta);
 
-      setTipoMensaje(
-        datos.encontrado ? "success" : "error"
-      );
-
-      // CORRECCIÓN:
-      // Solo redireccionar si existe el repuesto
-      // y tiene una ubicación válida.
-
-      if (
+      const ubicacionValida =
         datos.encontrado === true &&
-        datos.ubicacion
-      ) {
+        datos.registro &&
+        datos.ubicacion &&
+        datos.ubicacion.estante;
+
+      if (ubicacionValida) {
+        setTipoMensaje("success");
+
+        // Redireccionar únicamente cuando existe ubicación.
         onResultadoRef.current?.(datos);
       } else {
+        setTipoMensaje("error");
+
+        // No mostrar una ubicación inexistente.
         onResultadoRef.current?.(null);
       }
 
       hablar(datos.respuesta);
 
     } catch (error) {
-      console.error(
-        "Error consultando inventario:",
-        error
-      );
+      console.error("Error consultando inventario:", error);
 
       const respuesta =
         "No pude consultar el inventario. Verifica tu conexión con el servidor.";
@@ -105,7 +138,6 @@ function VoiceAssistant({ onResultado }) {
       setMensaje(respuesta);
       setTipoMensaje("error");
 
-      // No conservar ubicación anterior.
       onResultadoRef.current?.(null);
 
       hablar(respuesta);
@@ -121,24 +153,28 @@ function VoiceAssistant({ onResultado }) {
   // =====================================
 
   const seleccionarMaterial = (opcion) => {
+    if (!opcion || procesandoRef.current) return;
+
     const resultado = seleccionarOpcionRepuesto(opcion);
 
     setOpciones([]);
     setMensaje(resultado.respuesta);
 
-    setTipoMensaje(
-      resultado.encontrado ? "success" : "error"
-    );
-
-    // CORRECCIÓN:
-    // Redireccionar únicamente con ubicación válida.
-
-    if (
+    const ubicacionValida =
       resultado.encontrado === true &&
-      resultado.ubicacion
-    ) {
+      resultado.registro &&
+      resultado.ubicacion &&
+      resultado.ubicacion.estante;
+
+    if (ubicacionValida) {
+      setTipoMensaje("success");
+
+      // Solo ahora se muestra la ubicación seleccionada.
       onResultadoRef.current?.(resultado);
+
     } else {
+      setTipoMensaje("error");
+
       onResultadoRef.current?.(null);
     }
 
@@ -251,8 +287,9 @@ function VoiceAssistant({ onResultado }) {
 
     window.speechSynthesis?.cancel();
 
-    setOpciones([]);
-    onResultadoRef.current?.(null);
+    ultimoTextoHabladoRef.current = "";
+
+    limpiarResultado();
 
     activoRef.current = true;
 
@@ -261,6 +298,7 @@ function VoiceAssistant({ onResultado }) {
 
     try {
       reconocimientoRef.current.start();
+
     } catch (error) {
       activoRef.current = false;
       setEscuchando(false);
@@ -280,6 +318,8 @@ function VoiceAssistant({ onResultado }) {
     activoRef.current = false;
 
     reconocimientoRef.current?.abort();
+
+    window.speechSynthesis?.cancel();
 
     setEscuchando(false);
     setOpciones([]);
@@ -374,6 +414,7 @@ function VoiceAssistant({ onResultado }) {
               disabled={procesando}
             >
               <span className="voice-search-option-info">
+
                 <strong>
                   {opcion.registro.descripcion}
                 </strong>
@@ -381,6 +422,7 @@ function VoiceAssistant({ onResultado }) {
                 <small>
                   {opcion.registro.sku || "Sin SKU"}
                 </small>
+
               </span>
 
               <span aria-hidden="true">›</span>
