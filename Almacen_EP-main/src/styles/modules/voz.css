@@ -766,12 +766,41 @@
   opacity: 1;
 }
 
+
+/* =========================================
+   BUSCADOR GENERAL Y ASISTENTE DE VOZ
+   CORRECCION RESPONSIVE
+========================================= */
+
+/* Buscador general: comportamiento normal */
+
+.warehouse-global-search-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.warehouse-global-search-input > input[type="search"] {
+  flex: 1 1 0%;
+  width: 100%;
+  min-width: 0;
+  color: #172033 !important;
+  -webkit-text-fill-color: #172033;
+  caret-color: #dc1717;
+  background: transparent;
+  opacity: 1;
+}
+
+/* Asistente de voz en escritorio */
+
 .warehouse-global-search-input > .voice-control {
   display: flex;
+  align-items: center;
   flex: 0 0 auto;
   width: auto;
   min-width: 0;
-  grid-template-columns: none;
   gap: 8px;
 }
 
@@ -781,6 +810,127 @@
   max-width: 240px;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/* =========================================
+   OPCIONES MULTIPLES EN CELULARES
+========================================= */
+
+@media (max-width: 600px) {
+
+  /* Solo reorganizar cuando existen opciones */
+  .warehouse-global-search-input:has(.voice-search-options) {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .warehouse-global-search-input:has(.voice-search-options)
+  > .voice-control {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+    box-sizing: border-box;
+  }
+
+  /* Mensaje de voz */
+  .voice-control .voice-inline-message {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  /* Lista de opciones */
+  .voice-control .voice-search-options {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    max-height: 55vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 0;
+    box-sizing: border-box;
+    overscroll-behavior: contain;
+  }
+
+  /* Título */
+  .voice-search-options-title {
+    margin: 0 0 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  /* Opciones seleccionables */
+  .voice-search-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 12px 10px;
+    gap: 8px;
+    box-sizing: border-box;
+  }
+
+  .voice-search-option-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .voice-search-option-info strong {
+    display: block;
+    width: 100%;
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .voice-search-option-info small {
+    font-size: 11px;
+  }
+
+  .voice-search-option > span:last-child {
+    flex-shrink: 0;
+    margin-left: 4px;
+  }
+
+  .voice-control-button {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+}
+
+/* Celulares pequeños */
+
+@media (max-width: 380px) {
+
+  .voice-control .voice-search-options {
+    max-height: 50vh;
+  }
+
+  .voice-search-option {
+    padding: 10px 8px;
+  }
+
+  .voice-search-option-info strong {
+    font-size: 12px;
+  }
 }
 
 
