@@ -768,3 +768,53 @@
   }
 }
 
+/* edi 1 
+
+
+/* =========================================
+   NUEVO RESALTADO DE UBICACIONES
+   COLOR AMBAR / DORADO
+========================================= */
+
+.location-division.division-found {
+  border: 2px solid #F59E0B !important;
+  background: #FFFBEB !important;
+  color: #92400E !important;
+  animation: division-found-pulse 1.2s ease-in-out 4;
+}
+
+.location-material-card.component-material-found {
+  border: 2px solid #F59E0B !important;
+  background: #FFFBEB !important;
+  color: #92400E !important;
+  animation: component-found-pulse 1.2s ease-in-out 4;
+}
+
+.location-material-card.component-division-target {
+  border: 1px solid #FCD34D !important;
+  background: #FFF8E7 !important;
+  color: #92400E !important;
+}
+
+@keyframes division-found-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.20);
+  }
+}
+
+@keyframes component-found-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.20);
+  }
+}
+
+
+
