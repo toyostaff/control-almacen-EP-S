@@ -463,66 +463,230 @@
 
 
 
-/* Contenedor principal */
+/* =====================================
+   CONTROL DE BÚSQUEDA POR VOZ
+===================================== */
+
 .voice-control {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  width: 100%;
-}
-
-/* Mensaje de respuesta */
-.voice-inline-message {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* Opciones siempre debajo del mensaje */
-.voice-search-options {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
   gap: 10px;
-  margin-top: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Botón del micrófono */
+
+.voice-control-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #dc1717;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.voice-control-button:hover {
+  background: #fff1f1;
+  border-color: #dc1717;
+}
+
+.voice-control-button.is-listening {
+  background: #dc1717;
+  color: #ffffff;
+  border-color: #dc1717;
+}
+
+.voice-control-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =====================================
+   MENSAJE DE ESTADO
+===================================== */
+
+.voice-inline-message {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 9px 13px;
+  border-radius: 9px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.voice-inline-message.listening {
+  background: #fff0f0;
+  color: #b91c1c;
+}
+
+.voice-inline-message.processing {
+  background: #f3f4f6;
+  color: #475569;
+}
+
+.voice-inline-message.success {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.voice-inline-message.error {
+  background: #fff1f1;
+  color: #b91c1c;
+}
+
+/* Indicador de escucha */
+
+.voice-inline-indicator {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #dc1717;
+  animation: voicePulse 1.2s infinite;
+}
+
+@keyframes voicePulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Indicador de procesamiento */
+
+.voice-inline-spinner {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  border: 2px solid #d1d5db;
+  border-top-color: #dc1717;
+  border-radius: 50%;
+  animation: voiceSpin 0.7s linear infinite;
+}
+
+@keyframes voiceSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =====================================
+   OPCIONES DE MATERIALES
+===================================== */
+
+.voice-search-options {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 9px;
+  margin-top: 8px;
   box-sizing: border-box;
 }
 
-/* Título */
 .voice-search-options-title {
-  width: 100%;
   margin: 0 0 5px;
-  text-align: left;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
-/* Cada opción ocupa una fila */
+/* Tarjetas de selección */
+
 .voice-search-option {
   display: flex;
-  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   width: 100%;
   min-width: 0;
-  box-sizing: border-box;
-  padding: 12px 14px;
+  padding: 13px 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #172033;
   text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
-/* Información del material */
+.voice-search-option:hover {
+  border-color: #dc1717;
+  background: #fffafa;
+}
+
+.voice-search-option:active {
+  background: #fff0f0;
+}
+
+.voice-search-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .voice-search-option-info {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
 }
 
 .voice-search-option-info strong {
-  white-space: normal;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .voice-search-option-info small {
   color: #64748b;
+  font-size: 12px;
+}
+
+/* Flecha de selección */
+
+.voice-search-option > span:last-child {
+  color: #dc1717;
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+/* =====================================
+   RESPONSIVE
+===================================== */
+
+@media (max-width: 480px) {
+  .voice-control {
+    gap: 8px;
+  }
+
+  .voice-control-button {
+    width: 43px;
+    height: 43px;
+  }
+
+  .voice-inline-message {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  .voice-search-option {
+    padding: 12px;
+  }
 }
 
