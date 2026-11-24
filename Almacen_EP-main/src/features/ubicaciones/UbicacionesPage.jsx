@@ -469,7 +469,16 @@ function UbicacionesPage() {
           <input
             type="search"
             value={busqueda}
-            onChange={(event) => setBusqueda(event.target.value)}
+            onChange={(event) => {
+              setBusqueda(event.target.value);
+
+              // Limpiar la localización anterior.
+              setUbicacionResaltada(null);
+              setSubdivisionResaltada(null);
+              setComponenteResaltado(null);
+              setDivisionActivaEnComponentes(null);
+              setUbicacionSeleccionada(null);
+            }}
             placeholder="Buscar repuesto, SKU o código..."
           />
 
@@ -480,8 +489,10 @@ function UbicacionesPage() {
                 setBusqueda("");
 
                 setUbicacionResaltada(null);
-
                 setSubdivisionResaltada(null);
+                setComponenteResaltado(null);
+                setDivisionActivaEnComponentes(null);
+                setUbicacionSeleccionada(null);
               }}
               aria-label="Limpiar búsqueda"
             >
@@ -740,10 +751,10 @@ function UbicacionesPage() {
                             {ubicacionesPiso.map((ubicacion) => {
                               const ocupada = ubicacion.cantidadRegistros > 0;
 
-                              const encontrada = ubicacionesEncontradas.has(
-                                ubicacion.nombre,
-                              );
-
+                              // Mostrar coincidencias solamente antes de seleccionar.
+                              const encontrada =
+                                !ubicacionResaltada &&
+                                ubicacionesEncontradas.has(ubicacion.nombre);
                               const seleccionada =
                                 ubicacionSeleccionada?.id === ubicacion.id;
 
