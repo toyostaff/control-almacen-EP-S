@@ -1,4 +1,3 @@
-
 /* =========================================================
    UBICACIONES - REDISEÃƒâ€˜O DE DETALLE DE ALMACENAMIENTO
    ========================================================= */
@@ -207,7 +206,9 @@
   border: 1px solid var(--color-border);
   border-radius: 10px;
   text-align: center;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .location-division.division-occupied {
@@ -338,7 +339,9 @@
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: white;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .location-material-card:hover {
@@ -652,8 +655,6 @@
   }
 }
 
-
-
 /* LOCALIZACIÃƒâ€œN ANIMADA DE REPUESTOS */
 
 .rack-bin {
@@ -686,7 +687,7 @@
   margin-top: 6px;
   border-radius: 6px;
   background: #dc2626;
-  color: white;
+  color: #ffffff !important;
   font-size: 11px;
   font-weight: 800;
 }
@@ -697,7 +698,8 @@
 }
 
 @keyframes warehouse-location-pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.12);
     background: #fffafa;
   }
@@ -714,7 +716,7 @@
     box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.18);
   }
 }
-    
+
 /* aqui otro 
 
 
@@ -739,7 +741,8 @@
 }
 
 @keyframes component-found-pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(220, 23, 23, 0);
     background: #fff1f1;
   }
@@ -777,44 +780,43 @@
 ========================================= */
 
 .location-division.division-found {
-  border: 2px solid #F59E0B !important;
-  background: #FFFBEB !important;
-  color: #92400E !important;
+  border: 2px solid #f59e0b !important;
+  background: #fffbeb !important;
+  color: #92400e !important;
   animation: division-found-pulse 1.2s ease-in-out 4;
 }
 
 .location-material-card.component-material-found {
-  border: 2px solid #F59E0B !important;
-  background: #FFFBEB !important;
-  color: #92400E !important;
+  border: 2px solid #f59e0b !important;
+  background: #fffbeb !important;
+  color: #92400e !important;
   animation: component-found-pulse 1.2s ease-in-out 4;
 }
 
 .location-material-card.component-division-target {
-  border: 1px solid #FCD34D !important;
-  background: #FFF8E7 !important;
-  color: #92400E !important;
+  border: 1px solid #fcd34d !important;
+  background: #fff8e7 !important;
+  color: #92400e !important;
 }
 
 @keyframes division-found-pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
   }
 
   50% {
-    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.20);
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.2);
   }
 }
 
 @keyframes component-found-pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
   }
 
   50% {
-    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.20);
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.2);
   }
 }
-
-
-
