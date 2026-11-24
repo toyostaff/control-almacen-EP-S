@@ -17,6 +17,7 @@ function VoiceAssistant({ onResultado }) {
   const reconocimientoRef = useRef(null);
   const activoRef = useRef(false);
   const procesandoRef = useRef(false);
+  const cancelacionManualRef = useRef(false);
   const onResultadoRef = useRef(onResultado);
 
   useEffect(() => {
@@ -63,7 +64,6 @@ function VoiceAssistant({ onResultado }) {
         setMensaje(datos.respuesta);
         setTipoMensaje("options");
 
-        // Limpiar ubicación anterior.
         onResultadoRef.current?.(null);
 
         hablar(datos.respuesta);
@@ -81,10 +81,7 @@ function VoiceAssistant({ onResultado }) {
       hablar(datos.respuesta);
 
     } catch (error) {
-      console.error(
-        "Error consultando inventario:",
-        error
-      );
+      console.error("Error consultando inventario:", error);
 
       const respuesta =
         "No pude consultar el inventario. Verifica tu conexión con el servidor.";
@@ -144,6 +141,8 @@ function VoiceAssistant({ onResultado }) {
     reconocimiento.maxAlternatives = 1;
 
     reconocimiento.onstart = () => {
+      cancelacionManualRef.current = false;
+
       setEscuchando(true);
       setMensaje("Te escucho...");
       setTipoMensaje("listening");
@@ -151,6 +150,8 @@ function VoiceAssistant({ onResultado }) {
     };
 
     reconocimiento.onresult = (event) => {
+      if (cancelacionManualRef.current) return;
+
       const texto =
         event.results[0][0].transcript.trim();
 
@@ -162,6 +163,12 @@ function VoiceAssistant({ onResultado }) {
     reconocimiento.onerror = (event) => {
       activoRef.current = false;
       setEscuchando(false);
+
+      // Evitar mensajes de error después de cancelar manualmente.
+      if (cancelacionManualRef.current) {
+        cancelacionManualRef.current = false;
+        return;
+      }
 
       let respuesta = "No pude reconocer tu consulta.";
 
@@ -188,6 +195,11 @@ function VoiceAssistant({ onResultado }) {
     reconocimiento.onend = () => {
       activoRef.current = false;
       setEscuchando(false);
+
+      if (cancelacionManualRef.current) {
+        cancelacionManualRef.current = false;
+        return;
+      }
     };
 
     reconocimientoRef.current = reconocimiento;
@@ -226,6 +238,8 @@ function VoiceAssistant({ onResultado }) {
 
     window.speechSynthesis?.cancel();
 
+    cancelacionManualRef.current = false;
+
     setOpciones([]);
     onResultadoRef.current?.(null);
 
@@ -248,18 +262,21 @@ function VoiceAssistant({ onResultado }) {
   };
 
   // =====================================
-  // CANCELAR ESCUCHA
+  // CANCELAR ESCUCHA CON X
   // =====================================
 
   const cancelarEscucha = () => {
+    cancelacionManualRef.current = true;
     activoRef.current = false;
 
     reconocimientoRef.current?.abort();
 
+    window.speechSynthesis?.cancel();
+
     setEscuchando(false);
     setOpciones([]);
-    setMensaje("Consulta cancelada.");
-    setTipoMensaje("error");
+    setMensaje("");
+    setTipoMensaje("");
   };
 
   // =====================================
@@ -269,22 +286,20 @@ function VoiceAssistant({ onResultado }) {
   return (
     <div className="voice-control">
 
+      {/* BOTÓN DEL MICRÓFONO */}
+
       <button
         type="button"
         className={`voice-control-button ${
           escuchando ? "is-listening" : ""
         }`}
-        onClick={
-          escuchando
-            ? cancelarEscucha
-            : iniciarEscucha
+        onClick={iniciarEscucha}
+        disabled={
+          procesando ||
+          escuchando ||
+          !soporteVoz
         }
-        disabled={procesando || !soporteVoz}
-        title={
-          escuchando
-            ? "Cancelar consulta"
-            : "Buscar repuesto mediante voz"
-        }
+        title="Buscar repuesto mediante voz"
         aria-label="Buscar repuesto mediante voz"
       >
         <svg
@@ -309,6 +324,33 @@ function VoiceAssistant({ onResultado }) {
           <path d="M8 22h8" />
         </svg>
       </button>
+
+      {/* BOTÓN X PARA CANCELAR */}
+
+      {escuchando && (
+        <button
+          type="button"
+          className="voice-cancel-button"
+          onClick={cancelarEscucha}
+          title="Salir de búsqueda por voz"
+          aria-label="Cancelar búsqueda por voz"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="19"
+            height="19"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      )}
+
+      {/* MENSAJE DE ESTADO */}
 
       {mensaje && (
         <div
@@ -339,7 +381,10 @@ function VoiceAssistant({ onResultado }) {
 
           {opciones.map((opcion) => (
             <button
-              key={opcion.registro.sku || opcion.registro.id}
+              key={
+                opcion.registro.sku ||
+                opcion.registro.id
+              }
               type="button"
               className="voice-search-option"
               onClick={() => seleccionarMaterial(opcion)}

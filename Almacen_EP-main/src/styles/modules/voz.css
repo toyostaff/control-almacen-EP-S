@@ -1,4 +1,3 @@
-
 /* =========================================
    ASISTENTE DE VOZ
    OBSIDIAN BLACK + CHROME SILVER + CRIMSON
@@ -28,7 +27,7 @@
   color: var(--color-primary);
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: .12em;
+  letter-spacing: 0.12em;
 }
 
 .voice-assistant-header h2 {
@@ -89,15 +88,18 @@
   border-radius: 50%;
   background: var(--color-primary);
   color: #fff;
-  box-shadow: 0 8px 20px rgba(212, 21, 20, .22);
+  box-shadow: 0 8px 20px rgba(212, 21, 20, 0.22);
   cursor: pointer;
-  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
 .voice-microphone:hover:not(:disabled) {
   transform: translateY(-3px);
   background: var(--color-primary-dark);
-  box-shadow: 0 12px 25px rgba(212, 21, 20, .3);
+  box-shadow: 0 12px 25px rgba(212, 21, 20, 0.3);
 }
 
 .voice-microphone:focus-visible {
@@ -106,7 +108,7 @@
 }
 
 .voice-microphone:disabled {
-  opacity: .55;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
@@ -116,7 +118,7 @@
 
 @keyframes voice-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(212, 21, 20, .35);
+    box-shadow: 0 0 0 0 rgba(212, 21, 20, 0.35);
   }
   70% {
     box-shadow: 0 0 0 17px rgba(212, 21, 20, 0);
@@ -158,17 +160,29 @@
   height: 10px;
   border-radius: 5px;
   background: var(--color-primary);
-  animation: voice-wave-animation .8s ease-in-out infinite alternate;
+  animation: voice-wave-animation 0.8s ease-in-out infinite alternate;
 }
 
-.voice-wave span:nth-child(2) { animation-delay: .15s; }
-.voice-wave span:nth-child(3) { animation-delay: .3s; }
-.voice-wave span:nth-child(4) { animation-delay: .45s; }
-.voice-wave span:nth-child(5) { animation-delay: .6s; }
+.voice-wave span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.voice-wave span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.voice-wave span:nth-child(4) {
+  animation-delay: 0.45s;
+}
+.voice-wave span:nth-child(5) {
+  animation-delay: 0.6s;
+}
 
 @keyframes voice-wave-animation {
-  from { height: 7px; }
-  to { height: 27px; }
+  from {
+    height: 7px;
+  }
+  to {
+    height: 27px;
+  }
 }
 
 /* TRANSCRIPCIÓN */
@@ -312,7 +326,6 @@
   }
 }
 
-
 /* INTEGRACIÓN EN UBICACIONES */
 
 .locations-voice-section {
@@ -329,7 +342,6 @@
     margin-bottom: 18px;
   }
 }
-
 
 /* =====================================
    BUSCADOR CON ASISTENTE DE VOZ
@@ -357,7 +369,7 @@
   color: var(--color-primary);
 
   cursor: pointer;
-  transition: all .2s ease;
+  transition: all 0.2s ease;
 }
 
 .voice-control-button:hover:not(:disabled) {
@@ -372,7 +384,7 @@
 }
 
 .voice-control-button:disabled {
-  opacity: .45;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -424,18 +436,18 @@
   border: 2px solid #cbd5e1;
   border-top-color: var(--color-primary);
   border-radius: 50%;
-  animation: voice-spin .7s linear infinite;
+  animation: voice-spin 0.7s linear infinite;
 }
 
 @keyframes voice-compact-pulse {
   50% {
-    box-shadow: 0 0 0 5px rgba(212, 21, 20, .12);
+    box-shadow: 0 0 0 5px rgba(212, 21, 20, 0.12);
   }
 }
 
 @keyframes voice-indicator {
   to {
-    opacity: .35;
+    opacity: 0.35;
   }
 }
 
@@ -460,8 +472,6 @@
   width: 36px;
   height: 36px;
 }
-
-
 
 /* =====================================
    CONTROL DE BÚSQUEDA POR VOZ
@@ -689,4 +699,3 @@
     padding: 12px;
   }
 }
-
